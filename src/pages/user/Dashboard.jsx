@@ -1,9 +1,9 @@
-import "../styles/Dashboard.css";
-import iconDashboard from "../assets/icon-dashboard.png";
-import iconEmisi from "../assets/icon-emisi.png";
-import iconRiwayat from "../assets/icon-riwayat.png";
-import iconEco from "../assets/icon-daun eco.png";
-import iconSetting from "../assets/setting.png";
+import "../../styles/Dashboard.css";
+import iconDashboard from "../../assets/icon-dashboard.png";
+import iconEmisi from "../../assets/icon-emisi.png";
+import iconRiwayat from "../../assets/icon-riwayat.png";
+import iconEco from "../../assets/icon-daun eco.png";
+import iconSetting from "../../assets/setting.png";
 
 const Dashboard = () => {
   return (
