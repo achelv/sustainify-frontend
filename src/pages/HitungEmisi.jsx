@@ -46,6 +46,7 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
 setTransportasiOptions(kOptions);
 
           const resAktivitas = await api.get('/aktivitas');
+          console.log("DATA AKTIVITAS:", resAktivitas.data);
           const aData = resAktivitas.data.data.map((item, index) => {
             const date = new Date(item.tanggal);
             return {
@@ -86,38 +87,57 @@ setTransportasiOptions(kOptions);
 };
 
   const handleTambah = async () => {
-    if (!selectedOption || !jumlah) return;
-    
-    try {
-      if (isTransportasi) {
-        await api.post('/aktivitas', {
-          kendaraan_id: selectedOption.value,
-          jarak_km: parseFloat(jumlah)
-        });
-        
-        // Refresh data
-        const resAktivitas = await api.get('/aktivitas');
-        const aData = resAktivitas.data.data.map((item, index) => {
-          const date = new Date(item.tanggal);
-          return {
-            no: index + 1,
-            id: `ACT${item.id}`,
-            tanggal: date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-            waktu: date.toTimeString().slice(0, 5).replace(":", "."),
-            aktivitas: item.kendaraan?.nama || '-',
-            jumlah: `${item.jarak_km} km`,
-            emisi: parseFloat(item.emisi_karbon),
-          };
-        });
-        setAktivitas(aData);
-        setTotalEmisi(aData.reduce((sum, item) => sum + item.emisi, 0));
-      }
-      setJumlah(""); 
-      setSelected("");
-    } catch (error) {
-      console.error("Gagal menambah aktivitas:", error);
+  if (!selectedOption || !jumlah) return;
+
+  try {
+    if (isTransportasi) {
+
+      const response = await api.post('/aktivitas', {
+        kendaraan_id: selectedOption.value,
+        jarak_km: parseFloat(jumlah)
+      });
+
+      console.log("POST BERHASIL:", response.data);
+
+      // Refresh data
+      const resAktivitas = await api.get('/aktivitas');
+
+      console.log("DATA AKTIVITAS:", resAktivitas.data);
+
+      const aData = resAktivitas.data.data.map((item, index) => {
+        const date = new Date(item.tanggal);
+
+        return {
+          no: index + 1,
+          id: `ACT${item.id}`,
+          tanggal: date.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+          }),
+          waktu: date.toTimeString().slice(0, 5).replace(":", "."),
+          aktivitas: item.kendaraan?.nama || '-',
+          jumlah: `${item.jarak_km} km`,
+          emisi: parseFloat(item.emisi_karbon),
+        };
+      });
+
+      setAktivitas(aData);
+      setTotalEmisi(
+        aData.reduce((sum, item) => sum + item.emisi, 0)
+      );
     }
-  };
+
+    setJumlah("");
+    setSelected("");
+
+  } catch (error) {
+    console.error(
+      "ERROR:",
+      error.response?.data || error
+    );
+  }
+};
 
   const card = { background: "#fff", borderRadius: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f3f4f6" };
 
