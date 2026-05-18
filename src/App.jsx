@@ -42,9 +42,11 @@ const getInitialMenu = () => {
 };
 
 const App = () => {
+
   const [isLoggedIn, setIsLoggedIn] = useState(
-    window.location.pathname !== "/" && window.location.pathname !== "/login"
+    !!localStorage.getItem("token")
   );
+
   const { activeMenu, handleMenuChange } = useActiveMenu(getInitialMenu());
 
   const handleMenuChangeWithPath = (menuId) => {

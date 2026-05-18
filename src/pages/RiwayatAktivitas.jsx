@@ -1,9 +1,33 @@
-import { useState } from "react";
-import { tableData } from "../data/mockData";
+import { useState, useEffect } from "react";
+import api from "../api";
 
 const RiwayatAktivitas = () => {
   const [search, setSearch] = useState("");
-  const [data] = useState(tableData);
+  const [data, setData] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const resAktivitas = await api.get('/aktivitas');
+        const aData = resAktivitas.data.data.map((item, index) => {
+          const date = new Date(item.tanggal);
+          return {
+            no: index + 1,
+            id: `ACT${item.id}`,
+            tanggal: date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+            waktu: date.toTimeString().slice(0, 5).replace(":", "."),
+            aktivitas: item.kendaraan?.nama || '-',
+            jumlah: `${item.jarak_km} km`,
+            emisi: parseFloat(item.emisi_karbon),
+          };
+        });
+        setData(aData);
+      } catch (error) {
+        console.error("Gagal mengambil data riwayat:", error);
+      }
+    };
+    fetchData();
+  }, []);
 
   const filtered = data.filter(row =>
     row.aktivitas.toLowerCase().includes(search.toLowerCase()) ||

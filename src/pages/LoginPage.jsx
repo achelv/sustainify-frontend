@@ -1,19 +1,28 @@
 import { useState } from "react";
+import api from "../api";
 
-const DUMMY_EMAIL = "raina@sustainify.com";
-const DUMMY_PASSWORD = "123456";
 
 const LoginPage = ({ onLogin }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const handleLogin = () => {
-    if (email === DUMMY_EMAIL && password === DUMMY_PASSWORD) {
+  const handleLogin = async () => {
+    try {
+      // Panggil endpoint backend kamu
+      const response = await api.post('/login', {
+        email: email,
+        password: password
+      });
+
+      // Simpan token untuk mengakses API lain yang butuh auth
+      localStorage.setItem('token', response.data.token);
+      
       setError("");
-      onLogin();
-    } else {
-      setError("Email atau password salah.");
+      onLogin(); // Lanjut ke halaman selanjutnya (berhasil)
+    } catch (err) {
+      // Tangkap pesan error dari backend jika email/password salah
+      setError(err.response?.data?.message || "Terjadi kesalahan saat login.");
     }
   };
 

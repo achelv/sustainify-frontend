@@ -1,12 +1,5 @@
-import { useState } from "react";
-
-const transportasiOptions = [
-  { label: "Mobil Bensin", value: "mobil_bensin", emissionFactor: 0.02 },
-  { label: "Motor", value: "motor", emissionFactor: 0.01 },
-  { label: "Bus", value: "bus", emissionFactor: 0.005 },
-  { label: "Kendaraan Listrik", value: "ev", emissionFactor: 0.003 },
-  { label: "Mengendarai montor", value: "montor", emissionFactor: 0.02 },
-];
+import { useState, useEffect } from "react";
+import api from "../api";
 
 const rumahTanggaOptions = [
   { label: "Penggunaan AC", value: "ac", emissionFactor: 0.4 },
@@ -15,15 +8,13 @@ const rumahTanggaOptions = [
   { label: "Kulkas", value: "kulkas", emissionFactor: 0.1 },
 ];
 
-const generateId = () => "K00T" + Math.floor(Math.random() * 90 + 10);
-
-const initialData = Array.from({ length: 5 }, (_, i) => ({
-  no: i + 1, id: "K00T21", tanggal: "21 April 2026",
-  waktu: "07.30", aktivitas: "Mengendarai montor", jumlah: "3 km", emisi: 0.06,
-}));
-
 const HitungEmisi = ({ subPage = "transportasi" }) => {
   const isTransportasi = subPage !== "rumah-tangga";
+
+  const [transportasiOptions, setTransportasiOptions] = useState([]);
+  const [aktivitas, setAktivitas] = useState([]);
+  const [totalEmisi, setTotalEmisi] = useState(0);
+
   const options = isTransportasi ? transportasiOptions : rumahTanggaOptions;
   const unitLabel = isTransportasi ? "km" : "jam";
   const inputPlaceholder = isTransportasi ? "Jarak" : "Jumlah";
@@ -32,28 +23,100 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
   const [selected, setSelected] = useState("");
   const [jumlah, setJumlah] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [totalEmisi, setTotalEmisi] = useState(0.06);
-  const [aktivitas, setAktivitas] = useState(initialData);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (isTransportasi) {
+          const resKendaraan = await api.get('/kendaraan');
+
+          console.log("DATA KENDARAAN:", resKendaraan.data);
+
+          const kendaraanData =
+            Array.isArray(resKendaraan.data)
+              ? resKendaraan.data
+              : resKendaraan.data.data || [];
+
+          const kOptions = kendaraanData.map((k) => ({
+            label: k.nama_kendaraan,
+            value: k.id,
+            emissionFactor: parseFloat(k.faktor_emisi),
+          }));
+
+setTransportasiOptions(kOptions);
+
+          const resAktivitas = await api.get('/aktivitas');
+          const aData = resAktivitas.data.data.map((item, index) => {
+            const date = new Date(item.tanggal);
+            return {
+              no: index + 1,
+              id: `ACT${item.id}`,
+              tanggal: date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+              waktu: date.toTimeString().slice(0, 5).replace(":", "."),
+              aktivitas: item.kendaraan?.nama || '-',
+              jumlah: `${item.jarak_km} km`,
+              emisi: parseFloat(item.emisi_karbon),
+            };
+          });
+          setAktivitas(aData);
+          setTotalEmisi(aData.reduce((sum, item) => sum + item.emisi, 0));
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data:", error);
+      }
+    };
+    fetchData();
+  }, [isTransportasi]);
 
   const selectedOption = options.find(o => o.value === selected);
-  const progressPct = Math.min((totalEmisi / 5) * 100, 100);
+  const progressPct = Math.min((totalEmisi / 50) * 100, 100);
 
-  const handleHitung = () => {
-    if (!selectedOption || !jumlah) return;
-    setTotalEmisi(parseFloat((parseFloat(jumlah) * selectedOption.emissionFactor).toFixed(2)));
-  };
+ const handleHitung = () => {
+  if (!selectedOption || !jumlah) {
+    alert("Pilih aktivitas dan isi jumlah terlebih dahulu!");
+    return;
+  }
 
-  const handleTambah = () => {
+  const hasilEmisi =
+    parseFloat(jumlah) * selectedOption.emissionFactor;
+
+  alert(
+    `Estimasi Emisi Karbon:\n${hasilEmisi.toFixed(2)} kg CO₂`
+  );
+};
+
+  const handleTambah = async () => {
     if (!selectedOption || !jumlah) return;
-    const emisi = parseFloat((parseFloat(jumlah) * selectedOption.emissionFactor).toFixed(2));
-    const now = new Date();
-    const tanggal = now.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-    const waktu = now.toTimeString().slice(0, 5).replace(":", ".");
-    setAktivitas(prev => [...prev, {
-      no: prev.length + 1, id: generateId(), tanggal, waktu,
-      aktivitas: selectedOption.label, jumlah: `${jumlah} ${unitLabel}`, emisi,
-    }]);
-    setJumlah(""); setSelected("");
+    
+    try {
+      if (isTransportasi) {
+        await api.post('/aktivitas', {
+          kendaraan_id: selectedOption.value,
+          jarak_km: parseFloat(jumlah)
+        });
+        
+        // Refresh data
+        const resAktivitas = await api.get('/aktivitas');
+        const aData = resAktivitas.data.data.map((item, index) => {
+          const date = new Date(item.tanggal);
+          return {
+            no: index + 1,
+            id: `ACT${item.id}`,
+            tanggal: date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+            waktu: date.toTimeString().slice(0, 5).replace(":", "."),
+            aktivitas: item.kendaraan?.nama || '-',
+            jumlah: `${item.jarak_km} km`,
+            emisi: parseFloat(item.emisi_karbon),
+          };
+        });
+        setAktivitas(aData);
+        setTotalEmisi(aData.reduce((sum, item) => sum + item.emisi, 0));
+      }
+      setJumlah(""); 
+      setSelected("");
+    } catch (error) {
+      console.error("Gagal menambah aktivitas:", error);
+    }
   };
 
   const card = { background: "#fff", borderRadius: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f3f4f6" };
@@ -62,8 +125,17 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     <div style={{ width: "100%", padding: "0 8px"  }}>
 
       {/* Top section - tanpa overflow hidden */}
-      <div style={{ display: "flex", marginBottom: "24px", borderRadius: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", position: "relative" }}>
-
+      <div
+      style={{
+        display: "flex",
+        marginBottom: "24px",
+        borderRadius: "16px",
+        boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
+        position: "relative",
+        overflow: "visible",
+        zIndex: 1,
+        }}
+      >
         {/* Total Emisi */}
         <div style={{ background: "#fff", borderRadius: "16px 0 0 16px", padding: "32px 28px", minWidth: "250px", flex: "0 0 auto" }}>
           <p style={{ fontSize: "20px", fontWeight: 800, color: "#166534", marginBottom: "20px" }}>Total Emisi</p>
@@ -88,25 +160,83 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
           <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap", position: "relative", zIndex: 10 }}>
 
             {/* Dropdown */}
-            <div style={{ position: "relative", flex: "1 1 200px", zIndex: 999 }}>
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                style={{ width: "100%", padding: "13px 16px", borderRadius: "12px", border: "2px solid rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.1)", color: selectedOption ? "#fff" : "rgba(255,255,255,0.7)", fontSize: "14px", fontWeight: 500, fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}
-              >
-                <span>{selectedOption ? selectedOption.label : dropdownPlaceholder}</span>
-                <span style={{ fontSize: "18px" }}>›</span>
-              </button>
+            <div
+                style={{
+                position: "relative",
+                flex: "1 1 200px",
+                              zIndex: 9999,
+                            }}
+                          >
+                            <button
+                              onClick={() => setShowDropdown(!showDropdown)}
+                              style={{ width: "100%", padding: "13px 16px", borderRadius: "12px", border: "2px solid rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.1)", color: selectedOption ? "#fff" : "rgba(255,255,255,0.7)", fontSize: "14px", fontWeight: 500, fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                            >
+                              <span>{selectedOption ? selectedOption.label : dropdownPlaceholder}</span>
+                              <span style={{ fontSize: "18px" }}>›</span>
+                            </button>
 
-              {showDropdown && (
-                <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: "#fff", borderRadius: "12px", boxShadow: "0 12px 32px rgba(0,0,0,0.25)", zIndex: 9999, overflow: "hidden", border: "1px solid #e5e7eb" }}>
-                  {options.map(opt => (
-                    <button key={opt.value}
-                      onClick={() => { setSelected(opt.value); setShowDropdown(false); }}
-                      style={{ width: "100%", padding: "12px 16px", border: "none", background: selected === opt.value ? "#f0fdf4" : "#fff", color: "#166534", fontSize: "14px", fontWeight: 500, fontFamily: "inherit", cursor: "pointer", textAlign: "left", borderBottom: "1px solid #f3f4f6", display: "block" }}
-                      onMouseEnter={e => e.currentTarget.style.background = "#f0fdf4"}
-                      onMouseLeave={e => e.currentTarget.style.background = selected === opt.value ? "#f0fdf4" : "#fff"}
-                    >{opt.label}</button>
-                  ))}
+                            {showDropdown && (
+                              <div
+                                style={{
+                                  position: "absolute",
+                                  top: "calc(100% + 6px)",
+                                  left: 0,
+                                  right: 0,
+                                  background: "#fff",
+                                  borderRadius: "12px",
+                                  boxShadow: "0 12px 32px rgba(0,0,0,0.25)",
+                                  zIndex: 99999,
+                                  border: "1px solid #e5e7eb",
+                                  overflow: "visible",
+                                }}
+                              >
+                                {options.length === 0 ? (
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    color: "#6b7280",
+                    fontSize: "14px",
+                  }}
+                >
+                  Data kendaraan kosong
+                </div>
+              ) : (
+                options.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => {
+                      setSelected(opt.value);
+                      setShowDropdown(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "12px 16px",
+                      border: "none",
+                      background:
+                        selected === opt.value ? "#f0fdf4" : "#fff",
+                      color: "#166534",
+                      fontSize: "14px",
+                      fontWeight: 500,
+                      fontFamily: "inherit",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      borderBottom: "1px solid #f3f4f6",
+                      display: "block",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "#f0fdf4")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background =
+                        selected === opt.value
+                          ? "#f0fdf4"
+                          : "#fff")
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                ))
+              )}
                 </div>
               )}
             </div>
