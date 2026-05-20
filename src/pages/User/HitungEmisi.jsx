@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../../components/icons/icon";
+import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../../components/icons/Icon";
 
 const tEF    = { motor: 0.06, mobil: 0.21, bus: 0.09, ojek: 0.065, angkot: 0.07, sepeda: 0.00 };
 const tLabel = { motor: "Motor", mobil: "Mobil pribadi", bus: "Bus kota", ojek: "Ojek online", angkot: "Angkot", sepeda: "Sepeda" };
