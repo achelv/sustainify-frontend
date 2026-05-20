@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import api from "../api";
+import api from "../../api";
 import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../../components/icons/Icon";
 
 // ── Static data rumah tangga ─────────────────────────────────
