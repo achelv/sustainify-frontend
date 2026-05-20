@@ -8,8 +8,8 @@ import RiwayatAktivitas from "./pages/User/RiwayatAktivitas";
 import EcoMingguan from "./pages/User/EcoMingguan";
 import LoginPage from "./pages/User/LoginPage";
 import DashboardAdmin from "./pages/Admin/DashboardAdmin";
-import ManajemenUser from "./pages/Admin/Manajementuser";
-import RiwayatKarbon from "./pages/Admin/RiwayatKararbon";
+import ManajemenUser from "./pages/Admin/ManajemenUser";
+import RiwayatKarbon from "./pages/Admin/RiwayatKarbon";
 import { navMenuItems } from "./data/mockData";
 import { useActiveMenu } from "./hooks/useActiveMenu";
 
