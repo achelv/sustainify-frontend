@@ -1,23 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import api from "../api";
 import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../../components/icons/Icon";
 
-const tEF    = { motor: 0.06, mobil: 0.21, bus: 0.09, ojek: 0.065, angkot: 0.07, sepeda: 0.00 };
-const tLabel = { motor: "Motor", mobil: "Mobil pribadi", bus: "Bus kota", ojek: "Ojek online", angkot: "Angkot", sepeda: "Sepeda" };
+// ── Static data rumah tangga ─────────────────────────────────
 const rEF    = { ac: 0.4, lampu: 0.01, tv: 0.05, kulkas: 0.1, ricecooker: 0.08, kipas: 0.03 };
 const rLabel = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice cooker", kipas: "Kipas angin" };
-
-const dummyTransportasi = [
-  { id: "ACT001", tanggal: "12 Juli 2025", waktu: "07.30", key: "motor",  nilai: 8,  emisi: 0.48 },
-  { id: "ACT002", tanggal: "12 Juli 2025", waktu: "17.15", key: "motor",  nilai: 8,  emisi: 0.48 },
-  { id: "ACT003", tanggal: "11 Juli 2025", waktu: "08.00", key: "mobil",  nilai: 25, emisi: 5.25 },
-  { id: "ACT004", tanggal: "11 Juli 2025", waktu: "18.30", key: "mobil",  nilai: 25, emisi: 5.25 },
-  { id: "ACT005", tanggal: "10 Juli 2025", waktu: "06.45", key: "bus",    nilai: 12, emisi: 1.08 },
-  { id: "ACT006", tanggal: "10 Juli 2025", waktu: "14.00", key: "ojek",   nilai: 6,  emisi: 0.39 },
-  { id: "ACT007", tanggal: "09 Juli 2025", waktu: "09.00", key: "angkot", nilai: 10, emisi: 0.70 },
-  { id: "ACT008", tanggal: "09 Juli 2025", waktu: "16.20", key: "sepeda", nilai: 4,  emisi: 0.00 },
-  { id: "ACT009", tanggal: "08 Juli 2025", waktu: "07.50", key: "motor",  nilai: 15, emisi: 0.90 },
-  { id: "ACT010", tanggal: "08 Juli 2025", waktu: "13.00", key: "mobil",  nilai: 20, emisi: 4.20 },
-];
 
 const dummyRumah = [
   { id: "RT001", tanggal: "12 Juli 2025", waktu: "08.00", key: "ac",         nilai: 6,   emisi: 2.40 },
@@ -67,10 +54,12 @@ const ModalHeader = ({ icon, title, sub, onClose }) => (
 
 // ── Modal Detail ─────────────────────────────────────────────
 const ModalDetail = ({ isTransportasi, row, onClose }) => {
-  const labelMap  = isTransportasi ? tLabel : rLabel;
-  const efMap     = isTransportasi ? tEF    : rEF;
+  const labelMap  = isTransportasi ? {} : rLabel;
+  const efMap     = isTransportasi ? {} : rEF;
   const unitKey   = isTransportasi ? "Jarak"   : "Jumlah";
   const unitLabel = isTransportasi ? "km"      : "jam";
+  const namaAktivitas = isTransportasi ? row.aktivitas : labelMap[row.key];
+  const ef            = isTransportasi ? row.emissionFactor : efMap[row.key];
 
   return (
     <Overlay onClose={onClose}>
@@ -84,9 +73,9 @@ const ModalDetail = ({ isTransportasi, row, onClose }) => {
         {[
           ["Tanggal",                                          row.tanggal],
           ["Waktu",                                            row.waktu],
-          [isTransportasi ? "Kendaraan" : "Aktivitas",        labelMap[row.key]],
+          [isTransportasi ? "Kendaraan" : "Aktivitas",        namaAktivitas],
           [unitKey,                                            `${row.nilai} ${unitLabel}`],
-          ["Faktor emisi",                                     `${efMap[row.key]} kg/${unitLabel}`],
+          ["Faktor emisi",                                     `${ef} kg/${unitLabel}`],
           ["Total emisi",                                      `${row.emisi.toFixed(2)} kg co₂`],
         ].map(([label, val], i, arr) => (
           <div key={i} style={{ ...styles.dlRow, borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none" }}>
@@ -101,34 +90,48 @@ const ModalDetail = ({ isTransportasi, row, onClose }) => {
 };
 
 // ── Modal Edit ───────────────────────────────────────────────
-const ModalEdit = ({ isTransportasi, row, onSave, onClose }) => {
-  const [key,   setKey]   = useState(row.key);
-  const [nilai, setNilai] = useState(row.nilai);
-  const labelMap  = isTransportasi ? tLabel : rLabel;
-  const unitLabel = isTransportasi ? "km"   : "jam";
+const ModalEdit = ({ isTransportasi, row, transportasiOptions, onSave, onClose }) => {
+  const labelMap  = isTransportasi ? {} : rLabel;
+  const efMap     = isTransportasi ? {} : rEF;
+  const unitLabel = isTransportasi ? "km" : "jam";
+
+  const [selKey, setSelKey] = useState(isTransportasi ? row.kendaraanId : row.key);
+  const [nilai,  setNilai]  = useState(row.nilai);
 
   const handleSave = () => {
-    const ef = (isTransportasi ? tEF : rEF)[key];
-    const n  = parseFloat(nilai);
-    if (!key || isNaN(n) || n <= 0) return;
-    onSave({ key, nilai: n, emisi: parseFloat((n * ef).toFixed(2)) });
+    const n = parseFloat(nilai);
+    if (!selKey || isNaN(n) || n <= 0) return;
+
+    if (isTransportasi) {
+      const opt = transportasiOptions.find(o => String(o.value) === String(selKey));
+      if (!opt) return;
+      onSave({
+        kendaraanId:    opt.value,
+        aktivitas:      opt.label,
+        emissionFactor: opt.emissionFactor,
+        nilai:          n,
+        emisi:          parseFloat((n * opt.emissionFactor).toFixed(2)),
+      });
+    } else {
+      onSave({
+        key:   selKey,
+        nilai: n,
+        emisi: parseFloat((n * efMap[selKey]).toFixed(2)),
+      });
+    }
   };
 
   return (
     <Overlay onClose={onClose}>
-      <ModalHeader
-        icon={<EditIcon size={18} />}
-        title="Edit aktivitas"
-        sub={row.id}
-        onClose={onClose}
-      />
+      <ModalHeader icon={<EditIcon size={18} />} title="Edit aktivitas" sub={row.id} onClose={onClose} />
       <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
         <div>
           <label style={styles.label}>{isTransportasi ? "Kendaraan" : "Aktivitas"}</label>
-          <select value={key} onChange={e => setKey(e.target.value)} style={styles.input}>
-            {Object.entries(labelMap).map(([v, l]) => (
-              <option key={v} value={v}>{l}</option>
-            ))}
+          <select value={selKey} onChange={e => setSelKey(e.target.value)} style={styles.input}>
+            {isTransportasi
+              ? transportasiOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)
+              : Object.entries(labelMap).map(([v, l]) => <option key={v} value={v}>{l}</option>)
+            }
           </select>
         </div>
         <div>
@@ -150,7 +153,7 @@ const ModalEdit = ({ isTransportasi, row, onSave, onClose }) => {
 
 // ── Modal Hapus ──────────────────────────────────────────────
 const ModalHapus = ({ isTransportasi, row, onConfirm, onClose }) => {
-  const labelMap = isTransportasi ? tLabel : rLabel;
+  const nama = isTransportasi ? row.aktivitas : rLabel[row.key];
   return (
     <Overlay onClose={onClose}>
       <div style={{ textAlign: "center" }}>
@@ -159,7 +162,7 @@ const ModalHapus = ({ isTransportasi, row, onConfirm, onClose }) => {
         </div>
         <p style={{ fontSize: "15px", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>Hapus aktivitas?</p>
         <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "20px" }}>
-          Aktivitas <strong>{labelMap[row.key]}</strong> akan dihapus dari daftar.
+          Aktivitas <strong>{nama}</strong> akan dihapus dari daftar.
         </p>
         <div style={{ display: "flex", gap: "8px" }}>
           <button style={styles.btnSecondary} onClick={onClose}>Batal</button>
@@ -173,21 +176,17 @@ const ModalHapus = ({ isTransportasi, row, onConfirm, onClose }) => {
 // ── Dropdown aksi per baris ──────────────────────────────────
 const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
   const [open, setOpen] = useState(false);
-
   const items = [
     { icon: <DetailIcon size={14} />, label: "Detail", color: "#166534", action: onDetail },
     { icon: <EditIcon   size={14} />, label: "Edit",   color: "#166534", action: onEdit   },
     { icon: <DeleteIcon size={14} />, label: "Hapus",  color: "#dc2626", action: onHapus  },
   ];
-
   return (
     <div style={{ position: "relative" }}>
       <button
         onClick={() => setOpen(v => !v)}
         style={{ width: "28px", height: "28px", borderRadius: "6px", background: "#f9fafb", border: "1px solid #e5e7eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", color: "#6b7280" }}
-      >
-        ⋮
-      </button>
+      >⋮</button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
@@ -199,9 +198,7 @@ const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
                 style={{ width: "100%", padding: "8px 14px", border: "none", background: "none", textAlign: "left", fontSize: "13px", color, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", fontFamily: "inherit" }}
                 onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
                 onMouseLeave={e => e.currentTarget.style.background = "none"}
-              >
-                {icon}{label}
-              </button>
+              >{icon}{label}</button>
             ))}
           </div>
         </>
@@ -213,24 +210,72 @@ const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
 // ── Main Component ───────────────────────────────────────────
 const HitungEmisi = ({ subPage = "transportasi" }) => {
   const isTransportasi = subPage !== "rumah-tangga";
+  const prefix    = isTransportasi ? "ACT" : "RT";
+  const unitLabel = isTransportasi ? "km"  : "jam";
+  const colUnit   = isTransportasi ? "Jarak" : "Jumlah";
+  const limit     = 50;
 
-  const [tData,  setTData]  = useState(dummyTransportasi);
-  const [rData,  setRData]  = useState(dummyRumah);
+  // ── State transportasi (API) ─────────────────────────────
+  const [transportasiOptions, setTransportasiOptions] = useState([]);
+  const [tData, setTData] = useState([]);
+  const [loadingT, setLoadingT] = useState(false);
+
+  // ── State rumah tangga (lokal) ───────────────────────────
+  const [rData, setRData] = useState(dummyRumah);
+
   const [selKey, setSelKey] = useState("");
   const [input,  setInput]  = useState("");
   const [modal,  setModal]  = useState(null);
 
-  const data      = isTransportasi ? tData   : rData;
-  const setData   = isTransportasi ? setTData : setRData;
-  const labelMap  = isTransportasi ? tLabel  : rLabel;
-  const efMap     = isTransportasi ? tEF     : rEF;
-  const prefix    = isTransportasi ? "ACT"   : "RT";
-  const unitLabel = isTransportasi ? "km"    : "jam";
-  const colUnit   = isTransportasi ? "Jarak" : "Jumlah";
-  const limit     = 50;
+  const data    = isTransportasi ? tData    : rData;
+  const setData = isTransportasi ? setTData : setRData;
+  const total   = data.reduce((s, a) => s + a.emisi, 0);
+  const pct     = Math.min((total / limit) * 100, 100);
 
-  const total = data.reduce((s, a) => s + a.emisi, 0);
-  const pct   = Math.min((total / limit) * 100, 100);
+  // ── Fetch transportasi dari API ──────────────────────────
+  const fetchAktivitasAPI = async (kOptions) => {
+    const res   = await api.get("/aktivitas");
+    const raw   = res.data.data ?? res.data ?? [];
+    return raw.map((item, index) => {
+      const date = new Date(item.tanggal);
+      const opt  = kOptions.find(o => String(o.value) === String(item.kendaraan_id)) || {};
+      return {
+        id:             `ACT${String(index + 1).padStart(3, "0")}`,
+        apiId:          item.id,
+        tanggal:        date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+        waktu:          date.toTimeString().slice(0, 5).replace(":", "."),
+        aktivitas:      item.kendaraan?.nama_kendaraan || opt.label || "-",
+        kendaraanId:    item.kendaraan_id,
+        emissionFactor: opt.emissionFactor ?? parseFloat(item.kendaraan?.faktor_emisi ?? 0),
+        nilai:          parseFloat(item.jarak_km),
+        emisi:          parseFloat(item.emisi_karbon),
+      };
+    });
+  };
+
+  useEffect(() => {
+    if (!isTransportasi) return;
+    const init = async () => {
+      setLoadingT(true);
+      try {
+        const resK  = await api.get("/kendaraan");
+        const rawK  = Array.isArray(resK.data) ? resK.data : resK.data.data ?? [];
+        const kOpt  = rawK.map(k => ({
+          label:          k.nama_kendaraan,
+          value:          k.id,
+          emissionFactor: parseFloat(k.faktor_emisi),
+        }));
+        setTransportasiOptions(kOpt);
+        const mapped = await fetchAktivitasAPI(kOpt);
+        setTData(mapped);
+      } catch (err) {
+        console.error("Gagal fetch data transportasi:", err);
+      } finally {
+        setLoadingT(false);
+      }
+    };
+    init();
+  }, [isTransportasi]);
 
   const nowStr = () => {
     const now = new Date();
@@ -240,33 +285,82 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     };
   };
 
-  const handleTambah = () => {
+  // ── Tambah ───────────────────────────────────────────────
+  const handleTambah = async () => {
     if (!selKey || !input || parseFloat(input) <= 0) {
       alert(`Pilih ${isTransportasi ? "kendaraan" : "aktivitas"} dan isi ${isTransportasi ? "jarak" : "jumlah jam"}!`);
       return;
     }
-    const n  = parseFloat(input);
-    const ef = efMap[selKey];
-    const updated = reindex(
-      [{ ...nowStr(), key: selKey, nilai: n, emisi: parseFloat((n * ef).toFixed(2)) }, ...data],
-      prefix
-    );
-    setData(updated);
+    const n = parseFloat(input);
+
+    if (isTransportasi) {
+      const opt = transportasiOptions.find(o => String(o.value) === String(selKey));
+      if (!opt) return;
+      try {
+        await api.post("/aktivitas", { kendaraan_id: opt.value, jarak_km: n });
+        const mapped = await fetchAktivitasAPI(transportasiOptions);
+        setTData(mapped);
+      } catch (err) {
+        console.error("Gagal tambah aktivitas:", err);
+      }
+    } else {
+      const ef      = rEF[selKey];
+      const updated = reindex(
+        [{ ...nowStr(), key: selKey, nilai: n, emisi: parseFloat((n * ef).toFixed(2)) }, ...rData],
+        "RT"
+      );
+      setRData(updated);
+    }
     setSelKey(""); setInput("");
   };
 
-  const handleSaveEdit = (idx, patch) => {
-    const updated = data.map((r, i) => i === idx ? { ...r, ...patch } : r);
-    setData(reindex(updated, prefix));
+  // ── Edit ─────────────────────────────────────────────────
+  const handleSaveEdit = async (idx, patch) => {
+    if (isTransportasi) {
+      const row = tData[idx];
+      try {
+        await api.put(`/aktivitas/${row.apiId}`, {
+          kendaraan_id: patch.kendaraanId,
+          jarak_km:     patch.nilai,
+        });
+        const mapped = await fetchAktivitasAPI(transportasiOptions);
+        setTData(mapped);
+      } catch (err) {
+        console.error("Fallback edit lokal:", err);
+        setTData(reindex(tData.map((r, i) => i === idx ? { ...r, ...patch } : r), "ACT"));
+      }
+    } else {
+      setRData(reindex(rData.map((r, i) => i === idx ? { ...r, ...patch } : r), "RT"));
+    }
     setModal(null);
   };
 
-  const handleHapus = (idx) => {
-    setData(reindex(data.filter((_, i) => i !== idx), prefix));
+  // ── Hapus ─────────────────────────────────────────────────
+  const handleHapus = async (idx) => {
+    if (isTransportasi) {
+      const row = tData[idx];
+      try {
+        await api.delete(`/aktivitas/${row.apiId}`);
+        const mapped = await fetchAktivitasAPI(transportasiOptions);
+        setTData(mapped);
+      } catch (err) {
+        console.error("Fallback hapus lokal:", err);
+        setTData(reindex(tData.filter((_, i) => i !== idx), "ACT"));
+      }
+    } else {
+      setRData(reindex(rData.filter((_, i) => i !== idx), "RT"));
+    }
     setModal(null);
   };
 
-  const modalRow = modal ? data[modal.idx] : null;
+  const labelMap   = isTransportasi ? {} : rLabel;
+  const modalRow   = modal ? data[modal.idx] : null;
+  const isLoading  = isTransportasi && loadingT;
+
+  // ── Select options untuk form tambah ─────────────────────
+  const formOptions = isTransportasi
+    ? transportasiOptions
+    : Object.entries(rLabel).map(([v, l]) => ({ value: v, label: l }));
 
   return (
     <div style={{ width: "100%", padding: "0 8px" }}>
@@ -299,8 +393,8 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
               <option value="" style={{ color: "#166534" }}>
                 {isTransportasi ? "Pilih kendaraan" : "Pilih aktivitas"}
               </option>
-              {Object.entries(labelMap).map(([v, l]) => (
-                <option key={v} value={v} style={{ color: "#166534" }}>{l}</option>
+              {formOptions.map(o => (
+                <option key={o.value} value={o.value} style={{ color: "#166534" }}>{o.label}</option>
               ))}
             </select>
             <input
@@ -313,9 +407,7 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
             <button
               onClick={handleTambah}
               style={{ padding: "9px 18px", borderRadius: "8px", background: "#fff", border: "none", color: "#166534", fontSize: "13px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}
-            >
-              + Tambah
-            </button>
+            >+ Tambah</button>
           </div>
         </div>
       </div>
@@ -336,40 +428,42 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
               </tr>
             </thead>
             <tbody>
-              {data.length === 0 ? (
+              {isLoading ? (
+                <tr><td colSpan={8} style={{ padding: "32px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>Memuat data...</td></tr>
+              ) : data.length === 0 ? (
                 <tr><td colSpan={8} style={{ padding: "32px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>Belum ada aktivitas</td></tr>
-              ) : (
-                data.map((row, i) => (
-                  <tr
-                    key={row.id}
-                    style={{ borderBottom: "1px solid #f3f4f6" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  >
-                    <td style={{ padding: "11px 12px", fontSize: "13px", color: "#9ca3af" }}>{i + 1}.</td>
-                    <td style={{ padding: "11px 12px", fontSize: "11px", color: "#9ca3af" }}>{row.id}</td>
-                    <td style={{ padding: "11px 12px", fontSize: "13px", color: "#374151" }}>{row.tanggal}</td>
-                    <td style={{ padding: "11px 12px", fontSize: "13px", color: "#9ca3af" }}>{row.waktu}</td>
-                    <td style={{ padding: "11px 12px", fontSize: "13px", fontWeight: 600, color: "#111827" }}>{labelMap[row.key]}</td>
-                    <td style={{ padding: "11px 12px" }}>
-                      <span style={{ padding: "2px 8px", borderRadius: "5px", background: "#f0fdf4", color: "#166534", fontSize: "12px", fontWeight: 600 }}>
-                        {row.nilai} {unitLabel}
-                      </span>
-                    </td>
-                    <td style={{ padding: "11px 12px" }}>
-                      <span style={{ fontSize: "14px", fontWeight: 700, color: "#166534" }}>{row.emisi.toFixed(2)}</span>
-                      <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "2px" }}>kg co₂</span>
-                    </td>
-                    <td style={{ padding: "11px 12px" }}>
-                      <AksiMenu
-                        onDetail={() => setModal({ mode: "detail", idx: i })}
-                        onEdit={()   => setModal({ mode: "edit",   idx: i })}
-                        onHapus={()  => setModal({ mode: "hapus",  idx: i })}
-                      />
-                    </td>
-                  </tr>
-                ))
-              )}
+              ) : data.map((row, i) => (
+                <tr
+                  key={row.id}
+                  style={{ borderBottom: "1px solid #f3f4f6" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+                >
+                  <td style={{ padding: "11px 12px", fontSize: "13px", color: "#9ca3af" }}>{i + 1}.</td>
+                  <td style={{ padding: "11px 12px", fontSize: "11px", color: "#9ca3af" }}>{row.id}</td>
+                  <td style={{ padding: "11px 12px", fontSize: "13px", color: "#374151" }}>{row.tanggal}</td>
+                  <td style={{ padding: "11px 12px", fontSize: "13px", color: "#9ca3af" }}>{row.waktu}</td>
+                  <td style={{ padding: "11px 12px", fontSize: "13px", fontWeight: 600, color: "#111827" }}>
+                    {isTransportasi ? row.aktivitas : labelMap[row.key]}
+                  </td>
+                  <td style={{ padding: "11px 12px" }}>
+                    <span style={{ padding: "2px 8px", borderRadius: "5px", background: "#f0fdf4", color: "#166534", fontSize: "12px", fontWeight: 600 }}>
+                      {row.nilai} {unitLabel}
+                    </span>
+                  </td>
+                  <td style={{ padding: "11px 12px" }}>
+                    <span style={{ fontSize: "14px", fontWeight: 700, color: "#166534" }}>{row.emisi.toFixed(2)}</span>
+                    <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "2px" }}>kg co₂</span>
+                  </td>
+                  <td style={{ padding: "11px 12px" }}>
+                    <AksiMenu
+                      onDetail={() => setModal({ mode: "detail", idx: i })}
+                      onEdit={()   => setModal({ mode: "edit",   idx: i })}
+                      onHapus={()  => setModal({ mode: "hapus",  idx: i })}
+                    />
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -381,14 +475,17 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
       )}
       {modal && modalRow && modal.mode === "edit" && (
         <ModalEdit
-          isTransportasi={isTransportasi} row={modalRow}
+          isTransportasi={isTransportasi}
+          row={modalRow}
+          transportasiOptions={transportasiOptions}
           onSave={patch => handleSaveEdit(modal.idx, patch)}
           onClose={() => setModal(null)}
         />
       )}
       {modal && modalRow && modal.mode === "hapus" && (
         <ModalHapus
-          isTransportasi={isTransportasi} row={modalRow}
+          isTransportasi={isTransportasi}
+          row={modalRow}
           onConfirm={() => handleHapus(modal.idx)}
           onClose={() => setModal(null)}
         />
