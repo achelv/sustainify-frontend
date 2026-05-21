@@ -7,7 +7,7 @@ import { HomeIcon, UsersIcon,
   ChevronIcon,
   MenuIcon,
   EditIcon,
-} from "../components/icon/Icons";
+} from "../icons/Icon";
 
 
 // ─── Nav Config ───────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../../api";
-import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../components/icons/Icon";
+import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../../components/icons/Icon";
 
 // ── Static data rumah tangga ─────────────────────────────────
 const rEF    = { ac: 0.4, lampu: 0.01, tv: 0.05, kulkas: 0.1, ricecooker: 0.08, kipas: 0.03 };
