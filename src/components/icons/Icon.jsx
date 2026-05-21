@@ -170,3 +170,16 @@ export const MenuIcon = () => (
     <line x1="3" y1="18" x2="21" y2="18" />
   </svg>
 );
+
+export const LockClosedIcon = ({ style }) => (
+  <svg
+    style={{ width: "20px", height: "20px", ...style }}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
+    <rect x="5" y="11" width="14" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" strokeLinecap="round" />
+  </svg>
+);

@@ -7,6 +7,8 @@ import HitungEmisi from "./pages/User/HitungEmisi";
 import RiwayatAktivitas from "./pages/User/RiwayatAktivitas";
 import EcoMingguan from "./pages/User/EcoMingguan";
 import LoginPage from "./pages/User/LoginPage";
+import Register from "./pages/User/Register";
+import LoginAdmin from "./pages/Admin/LoginAdmin";
 import DashboardAdmin from "./pages/Admin/DashboardAdmin";
 import ManajemenUser from "./pages/Admin/ManajemenUser";
 import RiwayatKarbon from "./pages/Admin/RiwayatKarbon";
@@ -117,21 +119,59 @@ const AdminApp = ({ onLogout }) => {
 // ── Main App ─────────────────────────────────────────────────
 const App = () => {
   const currentPath = window.location.pathname;
+
+  // Cek apakah sedang di path admin login
+  const isAdminLoginPath = currentPath === "/adminlogin";
+
+  // Cek apakah sedang di path halaman admin (setelah login)
   const isAdminPath = adminPathToMenu[currentPath] !== undefined;
 
   const [isLoggedIn, setIsLoggedIn] = useState(DEV_BYPASS_LOGIN || !!localStorage.getItem("token"));
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(!!localStorage.getItem("admin_token"));
   const [role, setRole] = useState(isAdminPath ? "admin" : getRoleFromToken());
+
   const { activeMenu, handleMenuChange } = useActiveMenu(
     isAdminPath ? getInitialAdminMenu() : getInitialMenu()
   );
 
-  if (isAdminPath) {
-    return <AdminApp onLogout={() => {
-      window.history.pushState({}, "", "/dashboard");
+  // ── Halaman Login Admin (/adminlogin) ──
+  if (isAdminLoginPath) {
+    if (isAdminLoggedIn) {
+      window.history.pushState({}, "", "/admindashboard");
       window.location.reload();
-    }} />;
+      return null;
+    }
+    return (
+      <LoginAdmin
+        onLogin={() => {
+          setIsAdminLoggedIn(true);
+          window.history.pushState({}, "", "/admindashboard");
+          window.location.reload();
+        }}
+      />
+    );
   }
 
+  // ── Halaman Dashboard Admin (/admindashboard, dst) ──
+  if (isAdminPath) {
+    if (!isAdminLoggedIn) {
+      window.history.pushState({}, "", "/adminlogin");
+      window.location.reload();
+      return null;
+    }
+    return (
+      <AdminApp
+        onLogout={() => {
+          localStorage.removeItem("admin_token");
+          setIsAdminLoggedIn(false);
+          window.history.pushState({}, "", "/adminlogin");
+          window.location.reload();
+        }}
+      />
+    );
+  }
+
+  // ── Halaman User (login, register, dashboard) ──
   const handleLogin = () => {
     const userRole = getRoleFromToken();
     setRole(userRole);
@@ -148,7 +188,13 @@ const App = () => {
 
   if (!isLoggedIn) return <LoginPage onLogin={handleLogin} />;
 
-  if (role === "admin") return <AdminApp onLogout={handleLogout} />;
+  if (role === "admin") {
+    return (
+      <AdminApp
+        onLogout={handleLogout}
+      />
+    );
+  }
 
   const handleMenuChangeWithPath = (menuId) => {
     handleMenuChange(menuId);
