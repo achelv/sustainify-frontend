@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { HomeIcon, CalculatorIcon, HistoryIcon, LeafIcon } from "../icons/Icon";
+import { HomeIcon, CalculatorIcon, HistoryIcon, LeafIcon } from "../components/icons/Icon";
 
 const iconMap = {
   home: HomeIcon,

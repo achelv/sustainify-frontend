@@ -1,4 +1,4 @@
-import { CarIcon, BusIcon, MonitorIcon, EVIcon, DetailIcon } from "../icons/Icon";
+import { CarIcon, BusIcon, MonitorIcon, EVIcon, DetailIcon } from "../components/icons/Icon";
 
 const iconMap = {
   car: CarIcon,

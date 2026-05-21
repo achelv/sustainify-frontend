@@ -1,7 +1,7 @@
 import { useState } from "react";
 import StatCard from "../../components/ui/StatCard";
 import ActivityItem from "../../components/ui/ActivityItem";
-import { CO2Icon, TransportIcon, HouseIcon } from "../../components/icons/Icon";
+import { CO2Icon, TransportIcon, HouseIcon } from "../components/icons/Icon";
 import { stats, activities, weeklyChartData, catatan } from "../../data/mockData";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 

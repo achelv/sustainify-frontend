@@ -1,4 +1,4 @@
-import { HomeIcon, BellIcon } from "../icons/Icon";
+import { HomeIcon, BellIcon } from "../components/icons/Icon";
 
 const Header = ({ title = "Overview" }) => {
   return (
