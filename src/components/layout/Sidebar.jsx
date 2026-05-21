@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { HomeIcon, CalculatorIcon, HistoryIcon, LeafIcon } from "../components/icons/Icon";
+import { HomeIcon, CalculatorIcon, HistoryIcon, LeafIcon } from "../icons/Icon";
 
 const iconMap = {
   home: HomeIcon,
@@ -139,6 +139,10 @@ const Sidebar = ({ activeMenu, onMenuChange, navItems, onAddAccount, onLogout, o
         }} />
       </div>
     ) : null;
+// 1. TARUH KODENYA DI SINI (Tepat sebelum return utama)
+  if (window.location.pathname === "/" || window.location.pathname === "/login") {
+    return null;
+  }
 
   return (
     <>
