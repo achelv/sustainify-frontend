@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LockClosedIcon } from "../components/icons/Icon";
+import { LockClosedIcon } from "../../components/icons/Icon";
 
 const API_URL = "https://api.sustainafy.com/v1/auth/login";
 

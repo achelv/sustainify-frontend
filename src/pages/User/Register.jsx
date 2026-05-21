@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LockClosedIcon } from "../components/icons/Icon";
+import { LockClosedIcon } from "../../components/icons/Icon";
 // Sesuaikan path import icon dengan struktur project kamu:
 // import { LockClosedIcon } from "icons/Icon";
 
