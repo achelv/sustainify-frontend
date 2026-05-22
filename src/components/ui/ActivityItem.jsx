@@ -1,13 +1,15 @@
-import { CarIcon, BusIcon, MonitorIcon, EVIcon, DetailIcon } from "../icons/Icon";
+import { CarIcon, BusIcon, MonitorIcon, EVIcon, DetailIcon, HouseIcon } from "../icons/Icon";
 
 const iconMap = {
-  car: CarIcon,
-  bus: BusIcon,
-  monitor: MonitorIcon,
-  ev: EVIcon,
+  car:          CarIcon,
+  bus:          BusIcon,
+  monitor:      MonitorIcon,
+  ev:           EVIcon,
+  transportasi: CarIcon,
+  rumah_tangga: HouseIcon,
 };
 
-const ActivityItem = ({ type, date, emission, onDetail }) => {
+const ActivityItem = ({ type, date, emission, nama, onDetail }) => {
   const IconComponent = iconMap[type] || CarIcon;
 
   return (
@@ -34,7 +36,10 @@ const ActivityItem = ({ type, date, emission, onDetail }) => {
       </div>
 
       <div style={{ flex: 1 }}>
-        <p style={{ fontSize: "13px", color: "#9ca3af", fontWeight: 500 }}>{date}</p>
+        {nama && (
+          <p style={{ fontSize: "13px", fontWeight: 700, color: "#111827", marginBottom: "2px" }}>{nama}</p>
+        )}
+        <p style={{ fontSize: "12px", color: "#9ca3af", fontWeight: 500 }}>{date}</p>
       </div>
 
       <div style={{ display: "flex", alignItems: "flex-end", gap: "3px" }}>
