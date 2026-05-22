@@ -17,6 +17,7 @@ const LoginPage = ({ onLogin }) => {
 
       // Simpan token untuk mengakses API lain yang butuh auth
       localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
       
       setError("");
       onLogin(); // Lanjut ke halaman selanjutnya (berhasil)
