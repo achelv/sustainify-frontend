@@ -220,8 +220,9 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
   const [tData, setTData] = useState([]);
   const [loadingT, setLoadingT] = useState(false);
 
-  // ── State rumah tangga (lokal) ───────────────────────────
-  const [rData, setRData] = useState(dummyRumah);
+  // ── State rumah tangga (API) ─────────────────────────────
+  const [rData, setRData] = useState([]);
+  const [loadingR, setLoadingR] = useState(false);
 
   const [selKey, setSelKey] = useState("");
   const [input,  setInput]  = useState("");
@@ -253,28 +254,60 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     });
   };
 
+  // ── Fetch rumah tangga dari API ──────────────────────────
+  const fetchRumahTanggaAPI = async () => {
+    const res = await api.get("/rumah-tangga");
+    const raw = res.data.data ?? res.data ?? [];
+    return raw.map((item, index) => {
+      const date = new Date(item.tanggal);
+      return {
+        id:             `RT${String(index + 1).padStart(3, "0")}`,
+        apiId:          item.id,
+        tanggal:        date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+        waktu:          date.toTimeString().slice(0, 5).replace(":", "."),
+        key:            item.jenis_aktivitas,
+        nilai:          parseFloat(item.durasi_jam),
+        emisi:          parseFloat(item.emisi_karbon),
+      };
+    });
+  };
+
   useEffect(() => {
-    if (!isTransportasi) return;
-    const init = async () => {
-      setLoadingT(true);
-      try {
-        const resK  = await api.get("/kendaraan");
-        const rawK  = Array.isArray(resK.data) ? resK.data : resK.data.data ?? [];
-        const kOpt  = rawK.map(k => ({
-          label:          k.nama_kendaraan,
-          value:          k.id,
-          emissionFactor: parseFloat(k.faktor_emisi),
-        }));
-        setTransportasiOptions(kOpt);
-        const mapped = await fetchAktivitasAPI(kOpt);
-        setTData(mapped);
-      } catch (err) {
-        console.error("Gagal fetch data transportasi:", err);
-      } finally {
-        setLoadingT(false);
-      }
-    };
-    init();
+    if (isTransportasi) {
+      const init = async () => {
+        setLoadingT(true);
+        try {
+          const resK  = await api.get("/kendaraan");
+          const rawK  = Array.isArray(resK.data) ? resK.data : resK.data.data ?? [];
+          const kOpt  = rawK.map(k => ({
+            label:          k.nama_kendaraan,
+            value:          k.id,
+            emissionFactor: parseFloat(k.faktor_emisi),
+          }));
+          setTransportasiOptions(kOpt);
+          const mapped = await fetchAktivitasAPI(kOpt);
+          setTData(mapped);
+        } catch (err) {
+          console.error("Gagal fetch data transportasi:", err);
+        } finally {
+          setLoadingT(false);
+        }
+      };
+      init();
+    } else {
+      const initR = async () => {
+        setLoadingR(true);
+        try {
+          const mapped = await fetchRumahTanggaAPI();
+          setRData(mapped);
+        } catch (err) {
+          console.error("Gagal fetch data rumah tangga:", err);
+        } finally {
+          setLoadingR(false);
+        }
+      };
+      initR();
+    }
   }, [isTransportasi]);
 
   const nowStr = () => {
@@ -304,12 +337,16 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
         console.error("Gagal tambah aktivitas:", err);
       }
     } else {
-      const ef      = rEF[selKey];
-      const updated = reindex(
-        [{ ...nowStr(), key: selKey, nilai: n, emisi: parseFloat((n * ef).toFixed(2)) }, ...rData],
-        "RT"
-      );
-      setRData(updated);
+      try {
+        await api.post("/rumah-tangga", {
+          jenis_aktivitas: selKey,
+          durasi_jam: n
+        });
+        const mapped = await fetchRumahTanggaAPI();
+        setRData(mapped);
+      } catch (err) {
+        console.error("Gagal tambah aktivitas rumah tangga:", err);
+      }
     }
     setSelKey(""); setInput("");
   };
@@ -330,7 +367,18 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
         setTData(reindex(tData.map((r, i) => i === idx ? { ...r, ...patch } : r), "ACT"));
       }
     } else {
-      setRData(reindex(rData.map((r, i) => i === idx ? { ...r, ...patch } : r), "RT"));
+      const row = rData[idx];
+      try {
+        await api.put(`/rumah-tangga/${row.apiId}`, {
+          jenis_aktivitas: patch.key,
+          durasi_jam:     patch.nilai,
+        });
+        const mapped = await fetchRumahTanggaAPI();
+        setRData(mapped);
+      } catch (err) {
+        console.error("Fallback edit rumah tangga lokal:", err);
+        setRData(reindex(rData.map((r, i) => i === idx ? { ...r, ...patch } : r), "RT"));
+      }
     }
     setModal(null);
   };
@@ -348,14 +396,22 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
         setTData(reindex(tData.filter((_, i) => i !== idx), "ACT"));
       }
     } else {
-      setRData(reindex(rData.filter((_, i) => i !== idx), "RT"));
+      const row = rData[idx];
+      try {
+        await api.delete(`/rumah-tangga/${row.apiId}`);
+        const mapped = await fetchRumahTanggaAPI();
+        setRData(mapped);
+      } catch (err) {
+        console.error("Fallback hapus rumah tangga lokal:", err);
+        setRData(reindex(rData.filter((_, i) => i !== idx), "RT"));
+      }
     }
     setModal(null);
   };
 
   const labelMap   = isTransportasi ? {} : rLabel;
   const modalRow   = modal ? data[modal.idx] : null;
-  const isLoading  = isTransportasi && loadingT;
+  const isLoading  = isTransportasi ? loadingT : loadingR;
 
   // ── Select options untuk form tambah ─────────────────────
   const formOptions = isTransportasi
