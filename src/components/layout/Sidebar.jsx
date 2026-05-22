@@ -140,9 +140,9 @@ const Sidebar = ({ activeMenu, onMenuChange, navItems, onAddAccount, onLogout, o
       </div>
     ) : null;
 // 1. TARUH KODENYA DI SINI (Tepat sebelum return utama)
-  if (window.location.pathname === "/" || window.location.pathname === "/login") {
-    return null;
-  }
+  if (window.location.pathname === "/login") {
+  return null;
+}
 
   return (
     <>
