@@ -103,8 +103,8 @@ const ModalEdit = ({ row, onSave, onClose }) => {
       <ModalHeader icon="✏️" title="Edit aktivitas" sub={row.id} onClose={onClose} />
       <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
         {[
-          { label: "Tanggal",   value: row.tanggal, disabled: true, el: "input" },
-          { label: "Waktu",     value: row.waktu,   disabled: true, el: "input" },
+          { label: "Tanggal", value: row.tanggal, disabled: true },
+          { label: "Waktu",   value: row.waktu,   disabled: true },
         ].map(({ label, value, disabled }) => (
           <div key={label}>
             <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>{label}</label>
@@ -220,7 +220,7 @@ const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
 // ── Badge kategori ───────────────────────────────────────────
 const KategoriBadge = ({ kat }) => {
   const map = {
-    Transportasi:  { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" },
+    Transportasi:   { background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" },
     "Rumah Tangga": { background: "#fdf4ff", color: "#7e22ce", border: "1px solid #e9d5ff" },
   };
   return (
@@ -236,40 +236,65 @@ const KategoriBadge = ({ kat }) => {
 
 // ── Main ─────────────────────────────────────────────────────
 const RiwayatAktivitas = () => {
-  const [search,        setSearch]        = useState("");
+  const [search,         setSearch]         = useState("");
   const [filterKategori, setFilterKategori] = useState("Semua");
-  const [showFilter,    setShowFilter]    = useState(false);
-  const [data,          setData]          = useState([]);
-  const [modal,         setModal]         = useState(null); // { mode, row }
+  const [showFilter,     setShowFilter]     = useState(false);
+  const [data,           setData]           = useState([]);
+  const [modal,          setModal]          = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await api.get("/aktivitas");
-        const mapped = res.data.data.map((item, index) => {
+        // Fetch transportasi
+        const resT   = await api.get("/aktivitas");
+        const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
+        const mappedT = (resT.data.data ?? []).map((item) => {
           const date = new Date(item.tanggal);
           return {
-            no:        index + 1,
-            id:        `ACT${String(item.id).padStart(3, "0")}`,
-            tanggal:   date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-            waktu:     date.toTimeString().slice(0, 5).replace(":", "."),
-            aktivitas: item.kendaraan?.nama || "-",
-            kategori:  item.kendaraan ? "Transportasi" : "Rumah Tangga",
-            jumlah:    `${item.jarak_km} km`,
-            emisi:     parseFloat(item.emisi_karbon),
+            id:       `ACT${String(item.id).padStart(3, "0")}`,
+            apiId:    item.id,
+            tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+            waktu:    date.toTimeString().slice(0, 5).replace(":", "."),
+            aktivitas: item.kendaraan?.nama_kendaraan || "-",
+            kategori: "Transportasi",
+            jumlah:   `${item.jarak_km} km`,
+            emisi:    parseFloat(item.emisi_karbon),
+            _date:    new Date(item.tanggal),
           };
         });
-        setData(mapped);
-      } catch {
+
+        // Fetch rumah tangga
+        const resR   = await api.get("/rumah-tangga");
+        const mappedR = (resR.data.data ?? []).map((item) => {
+          const date = new Date(item.tanggal);
+          return {
+            id:       `RT${String(item.id).padStart(3, "0")}`,
+            apiId:    item.id,
+            tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+            waktu:    date.toTimeString().slice(0, 5).replace(":", "."),
+            aktivitas: labelMap[item.jenis_aktivitas] || item.jenis_aktivitas,
+            kategori: "Rumah Tangga",
+            jumlah:   `${item.durasi_jam} jam`,
+            emisi:    parseFloat(item.emisi_karbon),
+            _date:    new Date(item.tanggal),
+          };
+        });
+
+        // Gabungkan, urutkan terbaru, kasih nomor urut
+        const combined = [...mappedT, ...mappedR]
+          .sort((a, b) => b._date - a._date)
+          .map((r, i) => ({ ...r, no: i + 1 }));
+
+        setData(combined);
+      } catch (err) {
+        console.error("Gagal fetch data:", err);
         setData(dummyData);
       }
     };
     fetchData();
   }, []);
 
-  const displayData = data.length > 0 ? data : dummyData;
-
-  const filtered = displayData.filter(row => {
+  const filtered = data.filter(row => {
     const matchSearch =
       row.aktivitas.toLowerCase().includes(search.toLowerCase()) ||
       row.id.toLowerCase().includes(search.toLowerCase());
@@ -279,15 +304,12 @@ const RiwayatAktivitas = () => {
   });
 
   const handleSaveEdit = (updated) => {
-    const source = data.length > 0 ? data : dummyData;
-    const next = source.map(r => r.id === updated.id ? updated : r);
-    setData(next);
+    setData(prev => prev.map(r => r.id === updated.id ? updated : r));
     setModal(null);
   };
 
   const handleHapus = (id) => {
-    const source = data.length > 0 ? data : dummyData;
-    setData(source.filter(r => r.id !== id).map((r, i) => ({ ...r, no: i + 1 })));
+    setData(prev => prev.filter(r => r.id !== id).map((r, i) => ({ ...r, no: i + 1 })));
     setModal(null);
   };
 
@@ -406,13 +428,13 @@ const RiwayatAktivitas = () => {
                     <td style={tdStyle}>{row.tanggal}</td>
                     <td style={tdStyle}>{row.waktu}</td>
                     <td style={{ ...tdStyle, fontWeight: 600, color: "#111827" }}>{row.aktivitas}</td>
-                    <td style={{ ...tdStyle }}><KategoriBadge kat={row.kategori} /></td>
+                    <td style={tdStyle}><KategoriBadge kat={row.kategori} /></td>
                     <td style={{ ...tdStyle, fontWeight: 600 }}>{row.jumlah}</td>
                     <td style={tdStyle}>
                       <span style={{ fontSize: "14px", fontWeight: 800, color: "#166534" }}>{row.emisi.toFixed(2)}</span>
                       <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "2px" }}>kg co₂</span>
                     </td>
-                    <td style={{ ...tdStyle }}>
+                    <td style={tdStyle}>
                       <div style={{ display: "flex", justifyContent: "center" }}>
                         <AksiMenu
                           onDetail={() => setModal({ mode: "detail", row })}
@@ -430,7 +452,7 @@ const RiwayatAktivitas = () => {
 
         {/* Footer */}
         <div style={{ marginTop: "16px", fontSize: "12px", color: "#9ca3af" }}>
-          Menampilkan {filtered.length} dari {displayData.length} data
+          Menampilkan {filtered.length} dari {data.length} data
         </div>
       </div>
 
