@@ -94,6 +94,11 @@ const LoginPage = ({ onLogin }) => {
         >
           Masuk
         </button>
+
+        {/* Link to Register */}
+        <div style={{ textAlign: "center", marginTop: "20px", fontSize: "13px", color: "#6b7280" }}>
+          Belum punya akun? <a href="/register" style={{ color: "#166534", fontWeight: 700, textDecoration: "none" }}>Daftar di sini</a>
+        </div>
       </div>
     </div>
   );
