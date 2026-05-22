@@ -186,7 +186,12 @@ const App = () => {
     window.location.reload();
   };
 
-  if (!isLoggedIn) return <LoginPage onLogin={handleLogin} />;
+  if (!isLoggedIn) {
+    if (window.location.pathname === "/register") {
+      return <Register onRegisterSuccess={handleLogin} />;
+    }
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
   if (role === "admin") {
     return (
