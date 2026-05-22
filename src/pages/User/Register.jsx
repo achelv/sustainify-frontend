@@ -3,9 +3,9 @@ import { LockClosedIcon } from "../../components/icons/Icon";
 // Sesuaikan path import icon dengan struktur project kamu:
 // import { LockClosedIcon } from "icons/Icon";
 
-const API_URL = "https://api.sustainafy.com/v1/auth/register";
+import api from "../../api";
 
-function Register() {
+function Register({ onRegisterSuccess }) {
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -35,21 +35,37 @@ function Register() {
     setAlert({ msg: "", type: "" });
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+      const response = await api.post("/register", {
+        name,
+        email,
+        password
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        setAlert({ msg: "Pendaftaran berhasil! Silakan cek email Anda.", type: "success" });
+      if (response.data.success) {
+        localStorage.setItem("token", response.data.token);
+        setAlert({ msg: "Pendaftaran berhasil! Masuk ke sistem...", type: "success" });
+        setTimeout(() => {
+          if (onRegisterSuccess) {
+            onRegisterSuccess();
+          } else {
+            window.location.reload();
+          }
+        }, 1500);
       } else {
-        setAlert({ msg: data.message || "Pendaftaran gagal. Coba lagi.", type: "error" });
+        setAlert({ msg: response.data.message || "Pendaftaran gagal. Coba lagi.", type: "error" });
       }
     } catch (err) {
-      setAlert({ msg: "Tidak dapat terhubung ke server. Periksa koneksi Anda.", type: "error" });
+      const errors = err.response?.data?.errors;
+      let errorMsg = err.response?.data?.message || "Tidak dapat terhubung ke server.";
+      
+      if (errors) {
+        // If there are detailed validation errors, display the first one
+        const firstErrorKey = Object.keys(errors)[0];
+        if (firstErrorKey && errors[firstErrorKey][0]) {
+          errorMsg = errors[firstErrorKey][0];
+        }
+      }
+      setAlert({ msg: errorMsg, type: "error" });
     } finally {
       setLoading(false);
     }
