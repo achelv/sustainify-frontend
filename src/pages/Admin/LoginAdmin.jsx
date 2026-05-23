@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { LockClosedIcon } from "../../components/icons/Icon";
+import api from "../../api";
 
-const API_URL = "https://api.sustainafy.com/v1/auth/login";
-
-export default function LoginAdmin() {
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [alert, setAlert] = useState({ msg: "", type: "" });
+export default function LoginAdmin({ onLogin }) {
+  const [form,    setForm]    = useState({ email: "", password: "" });
+  const [alert,   setAlert]   = useState({ msg: "", type: "" });
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -13,10 +12,10 @@ export default function LoginAdmin() {
   };
 
   const handleSubmit = async () => {
-    const { username, password } = form;
+    const { email, password } = form;
 
-    if (!username || !password) {
-      setAlert({ msg: "Harap isi username dan password.", type: "error" });
+    if (!email || !password) {
+      setAlert({ msg: "Harap isi email dan password.", type: "error" });
       return;
     }
 
@@ -24,21 +23,18 @@ export default function LoginAdmin() {
     setAlert({ msg: "", type: "" });
 
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
+      const response = await api.post("/login", { email, password });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (response.data.success) {
+        localStorage.setItem("admin_token", response.data.token);
+        localStorage.setItem("admin_user", JSON.stringify(response.data.user));
         setAlert({ msg: "Login berhasil! Mengalihkan...", type: "success" });
+        setTimeout(() => onLogin(), 800);
       } else {
-        setAlert({ msg: data.message || "Username atau password salah.", type: "error" });
+        setAlert({ msg: response.data.message || "Email atau password salah.", type: "error" });
       }
     } catch (err) {
-      setAlert({ msg: "Tidak dapat terhubung ke server.", type: "error" });
+      setAlert({ msg: err.response?.data?.message || "Email atau password salah.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -55,7 +51,7 @@ export default function LoginAdmin() {
         {/* Logo */}
         <div style={styles.logoWrap}>
           <div style={styles.logoIcon}>S</div>
-          <div style={styles.brandTitle}>Sustainafy</div>
+          <div style={styles.brandTitle}>Sustainify</div>
           <div style={styles.brandSub}>Masuk ke panel admin</div>
         </div>
 
@@ -66,18 +62,18 @@ export default function LoginAdmin() {
           </div>
         )}
 
-        {/* Username */}
+        {/* Email */}
         <div style={styles.formGroup}>
-          <label style={styles.label} htmlFor="username">Username</label>
+          <label style={styles.label} htmlFor="email">Email</label>
           <input
             style={styles.inp}
-            type="text"
-            id="username"
-            placeholder="Masukkan username"
-            value={form.username}
+            type="email"
+            id="email"
+            placeholder="admin@sustainify.com"
+            value={form.email}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
-            autoComplete="username"
+            autoComplete="email"
           />
         </div>
 
@@ -101,6 +97,11 @@ export default function LoginAdmin() {
           </div>
         </div>
 
+        {/* Hint */}
+        <p style={styles.hint}>
+          Gunakan: <strong style={styles.hintStrong}>admin@sustainify.com</strong> / <strong style={styles.hintStrong}>admin123</strong>
+        </p>
+
         {/* Tombol Masuk */}
         <button
           style={loading ? { ...styles.btnSubmit, ...styles.btnDisabled } : styles.btnSubmit}
@@ -109,7 +110,6 @@ export default function LoginAdmin() {
         >
           {loading ? "Memproses..." : "Masuk"}
         </button>
-
       </div>
     </div>
   );
@@ -139,103 +139,42 @@ const styles = {
     marginBottom: "1.5rem",
   },
   logoIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 14,
+    width: 60, height: 60, borderRadius: 14,
     background: "#2a6a3f",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontSize: 24,
-    fontWeight: 700,
-    color: "white",
-    marginBottom: "0.75rem",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    fontSize: 24, fontWeight: 700, color: "white", marginBottom: "0.75rem",
   },
-  brandTitle: {
-    fontSize: 22,
-    fontWeight: 700,
-    color: "#2a6a3f",
-    marginBottom: 4,
-  },
-  brandSub: {
-    fontSize: 14,
-    color: "#888",
-  },
+  brandTitle: { fontSize: 22, fontWeight: 700, color: "#2a6a3f", marginBottom: 4 },
+  brandSub:   { fontSize: 14, color: "#888" },
   alertError: {
-    padding: "10px 14px",
-    borderRadius: 10,
-    fontSize: 13,
-    marginBottom: "1rem",
-    background: "#fde8e8",
-    color: "#a32d2d",
-    border: "1px solid #f09595",
+    padding: "10px 14px", borderRadius: 10, fontSize: 13, marginBottom: "1rem",
+    background: "#fde8e8", color: "#a32d2d", border: "1px solid #f09595",
   },
   alertSuccess: {
-    padding: "10px 14px",
-    borderRadius: 10,
-    fontSize: 13,
-    marginBottom: "1rem",
-    background: "#eaf3de",
-    color: "#27500a",
-    border: "1px solid #97c459",
+    padding: "10px 14px", borderRadius: 10, fontSize: 13, marginBottom: "1rem",
+    background: "#eaf3de", color: "#27500a", border: "1px solid #97c459",
   },
-  formGroup: {
-    marginBottom: "1rem",
-  },
-  label: {
-    display: "block",
-    fontSize: 14,
-    fontWeight: 600,
-    color: "#333",
-    marginBottom: 6,
-  },
-  inpWrap: {
-    position: "relative",
-  },
+  formGroup: { marginBottom: "1rem" },
+  label: { display: "block", fontSize: 14, fontWeight: 600, color: "#333", marginBottom: 6 },
+  inpWrap: { position: "relative" },
   inp: {
-    width: "100%",
-    height: 48,
-    border: "1.5px solid #dde3dd",
-    borderRadius: 10,
-    padding: "0 14px",
-    fontSize: 14,
-    color: "#333",
-    background: "#fafafa",
-    outline: "none",
-    boxSizing: "border-box",
+    width: "100%", height: 48,
+    border: "1.5px solid #dde3dd", borderRadius: 10,
+    padding: "0 14px", fontSize: 14, color: "#333",
+    background: "#fafafa", outline: "none", boxSizing: "border-box",
   },
   inpIcon: {
-    position: "absolute",
-    right: 12,
-    top: "50%",
+    position: "absolute", right: 12, top: "50%",
     transform: "translateY(-50%)",
-    display: "flex",
-    alignItems: "center",
-    pointerEvents: "none",
+    display: "flex", alignItems: "center", pointerEvents: "none",
   },
-  hint: {
-    fontSize: 12,
-    color: "#aaa",
-    marginTop: 6,
-  },
-  hintStrong: {
-    color: "#2a6a3f",
-    fontWeight: 600,
-  },
+  hint: { fontSize: 12, color: "#aaa", marginTop: -6, marginBottom: 12 },
+  hintStrong: { color: "#2a6a3f", fontWeight: 600 },
   btnSubmit: {
-    width: "100%",
-    height: 52,
-    background: "#2a6a3f",
-    color: "white",
-    fontSize: 16,
-    fontWeight: 700,
-    border: "none",
-    borderRadius: 12,
-    cursor: "pointer",
-    marginTop: "0.5rem",
+    width: "100%", height: 52,
+    background: "#2a6a3f", color: "white",
+    fontSize: 16, fontWeight: 700,
+    border: "none", borderRadius: 12, cursor: "pointer", marginTop: "0.5rem",
   },
-  btnDisabled: {
-    background: "#7aaa8a",
-    cursor: "not-allowed",
-  },
+  btnDisabled: { background: "#7aaa8a", cursor: "not-allowed" },
 };
