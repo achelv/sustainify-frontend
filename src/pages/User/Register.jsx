@@ -43,6 +43,7 @@ function Register({ onRegisterSuccess }) {
 
       if (response.data.success) {
         localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
         setAlert({ msg: "Pendaftaran berhasil! Masuk ke sistem...", type: "success" });
         setTimeout(() => {
           if (onRegisterSuccess) {
