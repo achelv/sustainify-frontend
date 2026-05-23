@@ -3,7 +3,6 @@ import api from "../../api";
 import StatCard from "../../components/ui/StatCard";
 import ActivityItem from "../../components/ui/ActivityItem";
 import { CO2Icon, TransportIcon, HouseIcon } from "../../components/icons/Icon";
-import { weeklyChartData, catatan } from "../../data/mockData";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 // ─── ActivityDetailModal ──────────────────────────────────────────────────────
@@ -150,55 +149,57 @@ const WelcomeBanner = ({ nama }) => (
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 const Dashboard = () => {
   const [selectedActivity, setSelectedActivity] = useState(null);
-  const [stats,      setStats]      = useState({ totalEmisi: 0, transportasi: { value: 0, aktivitas: 0 }, rumahTangga: { value: 0, aktivitas: 0 } });
-  const [activities, setActivities] = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [nama,       setNama]       = useState("...");
+  const [stats,          setStats]          = useState({ totalEmisi: 0, transportasi: { value: 0, aktivitas: 0 }, rumahTangga: { value: 0, aktivitas: 0 } });
+  const [activities,     setActivities]     = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [nama,           setNama]           = useState("...");
+  const [weeklyChartData, setWeeklyChartData] = useState([]);
+  const [catatan,        setCatatan]        = useState("");
 
   const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
+  const HARI = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
   useEffect(() => {
     const fetchAll = async () => {
       try {
         setLoading(true);
 
-        // Ambil nama user dari localStorage/token
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         if (user?.name) setNama(user.name);
 
         // Fetch transportasi
-        const resT   = await api.get("/aktivitas");
-        const rawT   = resT.data.data ?? [];
+        const resT  = await api.get("/aktivitas");
+        const rawT  = resT.data.data ?? [];
         const totalT = rawT.reduce((s, i) => s + parseFloat(i.emisi_karbon), 0);
         const mappedT = rawT.map((item) => {
           const date = new Date(item.tanggal);
           return {
-            id:       item.id,
-            type:     "transportasi",
+            id:        item.id,
+            type:      "transportasi",
             aktivitas: item.kendaraan?.nama_kendaraan || "-",
-            jumlah:   `${item.jarak_km} km`,
-            tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-            date:     date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) + ", " + date.toTimeString().slice(0, 5).replace(":", "."),
-            emission: parseFloat(item.emisi_karbon),
-            _date:    date,
+            jumlah:    `${item.jarak_km} km`,
+            tanggal:   date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+            date:      date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) + ", " + date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+            emission:  parseFloat(item.emisi_karbon),
+            _date:     date,
           };
         });
 
         // Fetch rumah tangga
-        const resR   = await api.get("/rumah-tangga");
-        const rawR   = resR.data.data ?? [];
+        const resR  = await api.get("/rumah-tangga");
+        const rawR  = resR.data.data ?? [];
         const totalR = rawR.reduce((s, i) => s + parseFloat(i.emisi_karbon), 0);
         const mappedR = rawR.map((item) => {
           const date = new Date(item.tanggal);
           return {
-            id:       item.id,
-            type:     "rumah_tangga",
+            id:        item.id,
+            type:      "rumah_tangga",
             aktivitas: labelMap[item.jenis_aktivitas] || item.jenis_aktivitas,
-            jumlah:   `${item.durasi_jam} jam`,
-            tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-            date:     date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) + ", " + date.toTimeString().slice(0, 5).replace(":", "."),
-            emission: parseFloat(item.emisi_karbon),
-            _date:    date,
+            jumlah:    `${item.durasi_jam} jam`,
+            tanggal:   date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+            date:      date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) + ", " + date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+            emission:  parseFloat(item.emisi_karbon),
+            _date:     date,
           };
         });
 
@@ -213,6 +214,28 @@ const Dashboard = () => {
           transportasi: { value: totalT, aktivitas: rawT.length },
           rumahTangga:  { value: totalR, aktivitas: rawR.length },
         });
+
+        // ── Weekly chart dari data real ──────────────────
+        const byDay = Array(7).fill(0);
+        [...mappedT, ...mappedR].forEach(item => {
+          const idx = (item._date.getDay() + 6) % 7;
+          byDay[idx] += item.emission;
+        });
+        const wData = HARI.map((day, i) => ({ day, value: parseFloat(byDay[i].toFixed(2)) }));
+        setWeeklyChartData(wData);
+
+        // ── Catatan otomatis ─────────────────────────────
+        const totalEmisi = totalT + totalR;
+        const maxDay = wData.reduce((a, b) => b.value > a.value ? b : a, wData[0]);
+        const minDay = wData.filter(d => d.value > 0).reduce((a, b) => b.value < a.value ? b : a, wData.find(d => d.value > 0) || wData[0]);
+        const avg = (totalEmisi / 7).toFixed(2);
+
+        if (totalEmisi === 0) {
+          setCatatan("Belum ada aktivitas. Mulai catat aktivitasmu!");
+        } else {
+          setCatatan(`Total emisi minggu ini ${totalEmisi.toFixed(2)} kg CO₂. Emisi tertinggi pada hari ${maxDay?.day || "-"} dan terendah pada ${minDay?.day || "-"}. Rata-rata harian ${avg} kg.`);
+        }
+
       } catch (err) {
         console.error("Gagal fetch dashboard:", err);
       } finally {
@@ -272,13 +295,13 @@ const Dashboard = () => {
             <p style={{ fontSize: "13px", color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>Belum ada aktivitas</p>
           ) : activities.map((activity) => (
             <ActivityItem
-            key={`${activity.type}-${activity.id}`}
-            type={activity.type}
-            date={activity.date}
-            emission={activity.emission}
-            nama={activity.aktivitas}
-            onDetail={() => setSelectedActivity(activity)}
-          />
+              key={`${activity.type}-${activity.id}`}
+              type={activity.type}
+              date={activity.date}
+              emission={activity.emission}
+              nama={activity.aktivitas}
+              onDetail={() => setSelectedActivity(activity)}
+            />
           ))}
         </div>
 
@@ -289,19 +312,23 @@ const Dashboard = () => {
             boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #f3f4f6",
           }}>
             <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#111827", marginBottom: "12px" }}>Statistik</h3>
-            <div style={{ height: "180px" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={weeklyChartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 2px 12px #0001" }} />
-                  <Line type="monotone" dataKey="value" stroke="#166534" strokeWidth={2}
-                    dot={{ fill: "white", stroke: "#166534", strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, fill: "#166534" }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {weeklyChartData.every(d => d.value === 0) ? (
+              <p style={{ fontSize: "13px", color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>Belum ada data statistik</p>
+            ) : (
+              <div style={{ height: "180px" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weeklyChartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 2px 12px #0001" }} />
+                    <Line type="monotone" dataKey="value" stroke="#166534" strokeWidth={2}
+                      dot={{ fill: "white", stroke: "#166534", strokeWidth: 2, r: 4 }}
+                      activeDot={{ r: 6, fill: "#166534" }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </div>
 
           <div style={{
@@ -313,7 +340,7 @@ const Dashboard = () => {
               background: "#f0fdf4", border: "1px solid #dcfce7", borderRadius: "12px",
               padding: "16px", fontSize: "13px", color: "#14532d", fontWeight: 500, lineHeight: 1.65,
             }}>
-              {catatan}
+              {catatan || "Belum ada catatan."}
             </div>
           </div>
         </div>
