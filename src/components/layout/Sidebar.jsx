@@ -10,15 +10,16 @@ const iconMap = {
 
 const getUserFromToken = () => {
   try {
-    const token = localStorage.getItem("token");
-    if (!token) return { name: "Raina", email: "Raina@sustainify.com" };
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return {
-      name: payload.name || payload.username || "User",
-      email: payload.email || "-",
-    };
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (user?.name) {
+      return {
+        name: user.name,
+        email: user.email || "-",
+      };
+    }
+    return { name: "User", email: "-" };
   } catch {
-    return { name: "Raina", email: "Raina@sustainify.com" };
+    return { name: "User", email: "-" };
   }
 };
 
