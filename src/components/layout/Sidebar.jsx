@@ -141,9 +141,12 @@ const Sidebar = ({ activeMenu, onMenuChange, navItems, onAddAccount, onLogout, o
       </div>
     ) : null;
 // 1. TARUH KODENYA DI SINI (Tepat sebelum return utama)
-  if (window.location.pathname === "/login") {
-  return null;
-}
+    const handleLogin = () => {
+      const userRole = getRoleFromToken();
+      setRole(userRole);
+      setIsLoggedIn(true);
+      window.history.pushState({}, "", "/dashboard");
+    };
 
   return (
     <>
