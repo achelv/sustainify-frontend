@@ -8,6 +8,7 @@ import RiwayatAktivitas from "./pages/User/RiwayatAktivitas";
 import EcoMingguan from "./pages/User/EcoMingguan";
 import LoginPage from "./pages/User/LoginPage";
 import Register from "./pages/User/Register";
+import LandingPage from "./pages/User/LandingPage";
 import LoginAdmin from "./pages/Admin/LoginAdmin";
 import DashboardAdmin from "./pages/Admin/DashboardAdmin";
 import ManajemenUser from "./pages/Admin/ManajemenUser";
@@ -187,10 +188,10 @@ const App = () => {
   };
 
   if (!isLoggedIn) {
-    if (window.location.pathname === "/register") {
-      return <Register onRegisterSuccess={handleLogin} />;
-    }
-    return <LoginPage onLogin={handleLogin} />;
+    const path = window.location.pathname;
+    if (path === "/register") return <Register onRegisterSuccess={handleLogin} />;
+    if (path === "/login") return <LoginPage onRegisterSuccess={handleLogin} />;
+    return <LandingPage />;
   }
 
   if (role === "admin") {
