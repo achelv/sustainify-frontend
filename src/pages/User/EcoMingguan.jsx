@@ -139,14 +139,11 @@ const EcoMingguan = () => {
 
         // ── Minggu ini ───────────────────────────────────
         const now    = new Date();
-        const monday = new Date(now);
-        monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-        monday.setHours(0, 0, 0, 0);
-        const sunday = new Date(monday);
-        sunday.setDate(monday.getDate() + 6);
-        sunday.setHours(23, 59, 59, 999);
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(now.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
 
-        const isThisWeek  = d => d >= monday && d <= sunday;
+        const isThisWeek = d => d >= sevenDaysAgo && d <= now;
         const isThisMonth = d => d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 
         const tWeek = rawT.filter(i => isThisWeek(new Date(i.tanggal)));
