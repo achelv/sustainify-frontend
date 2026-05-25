@@ -1,23 +1,10 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../../api";
 import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../../components/icons/Icon";
 
 // ── Static data rumah tangga ─────────────────────────────────
 const rEF    = { ac: 0.4, lampu: 0.01, tv: 0.05, kulkas: 0.1, ricecooker: 0.08, kipas: 0.03 };
 const rLabel = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice cooker", kipas: "Kipas angin" };
-
-const dummyRumah = [
-  { id: "RT001", tanggal: "12 Juli 2025", waktu: "08.00", key: "ac",         nilai: 6,   emisi: 2.40 },
-  { id: "RT002", tanggal: "12 Juli 2025", waktu: "19.30", key: "tv",         nilai: 4,   emisi: 0.20 },
-  { id: "RT003", tanggal: "11 Juli 2025", waktu: "07.00", key: "lampu",      nilai: 8,   emisi: 0.08 },
-  { id: "RT004", tanggal: "11 Juli 2025", waktu: "00.00", key: "kulkas",     nilai: 24,  emisi: 2.40 },
-  { id: "RT005", tanggal: "10 Juli 2025", waktu: "06.30", key: "ricecooker", nilai: 1.5, emisi: 0.12 },
-  { id: "RT006", tanggal: "10 Juli 2025", waktu: "13.00", key: "kipas",      nilai: 5,   emisi: 0.15 },
-  { id: "RT007", tanggal: "09 Juli 2025", waktu: "09.00", key: "ac",         nilai: 8,   emisi: 3.20 },
-  { id: "RT008", tanggal: "09 Juli 2025", waktu: "20.00", key: "tv",         nilai: 3,   emisi: 0.15 },
-  { id: "RT009", tanggal: "08 Juli 2025", waktu: "07.00", key: "lampu",      nilai: 10,  emisi: 0.10 },
-  { id: "RT010", tanggal: "08 Juli 2025", waktu: "00.00", key: "kulkas",     nilai: 24,  emisi: 2.40 },
-];
 
 const reindex = (arr, prefix) =>
   arr.map((item, i) => ({ ...item, id: prefix + String(i + 1).padStart(3, "0") }));
@@ -176,21 +163,45 @@ const ModalHapus = ({ isTransportasi, row, onConfirm, onClose }) => {
 // ── Dropdown aksi per baris ──────────────────────────────────
 const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
   const [open, setOpen] = useState(false);
+  const [pos,  setPos]  = useState({ top: 0, right: 0 });
+  const btnRef = React.useRef(null);
+
   const items = [
     { icon: <DetailIcon size={14} />, label: "Detail", color: "#166534", action: onDetail },
     { icon: <EditIcon   size={14} />, label: "Edit",   color: "#166534", action: onEdit   },
     { icon: <DeleteIcon size={14} />, label: "Hapus",  color: "#dc2626", action: onHapus  },
   ];
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({
+        top:   rect.bottom + window.scrollY + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen(v => !v);
+  };
+
   return (
     <div style={{ position: "relative" }}>
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={btnRef}
+        onClick={handleOpen}
         style={{ width: "28px", height: "28px", borderRadius: "6px", background: "#f9fafb", border: "1px solid #e5e7eb", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", color: "#6b7280" }}
       >⋮</button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
-          <div style={{ position: "absolute", right: 0, top: "32px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "10px", zIndex: 100, minWidth: "130px", padding: "4px 0", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}>
+          <div style={{
+            position: "fixed",
+            top:   pos.top,
+            right: pos.right,
+            background: "#fff", border: "1px solid #e5e7eb",
+            borderRadius: "10px", zIndex: 100,
+            minWidth: "130px", padding: "4px 0",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+          }}>
             {items.map(({ icon, label, color, action }) => (
               <button
                 key={label}
@@ -215,28 +226,23 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
   const colUnit   = isTransportasi ? "Jarak" : "Jumlah";
   const limit     = 50;
 
-  // ── State transportasi (API) ─────────────────────────────
   const [transportasiOptions, setTransportasiOptions] = useState([]);
-  const [tData, setTData] = useState([]);
-  const [loadingT, setLoadingT] = useState(false);
-
-  // ── State rumah tangga (API) ─────────────────────────────
-  const [rData, setRData] = useState([]);
-  const [loadingR, setLoadingR] = useState(false);
-
-  const [selKey, setSelKey] = useState("");
-  const [input,  setInput]  = useState("");
-  const [modal,  setModal]  = useState(null);
+  const [tData,     setTData]     = useState([]);
+  const [loadingT,  setLoadingT]  = useState(false);
+  const [rData,     setRData]     = useState([]);
+  const [loadingR,  setLoadingR]  = useState(false);
+  const [selKey,    setSelKey]    = useState("");
+  const [input,     setInput]     = useState("");
+  const [modal,     setModal]     = useState(null);
 
   const data    = isTransportasi ? tData    : rData;
   const setData = isTransportasi ? setTData : setRData;
   const total   = data.reduce((s, a) => s + a.emisi, 0);
   const pct     = Math.min((total / limit) * 100, 100);
 
-  // ── Fetch transportasi dari API ──────────────────────────
   const fetchAktivitasAPI = async (kOptions) => {
-    const res   = await api.get("/aktivitas");
-    const raw   = res.data.data ?? res.data ?? [];
+    const res = await api.get("/aktivitas");
+    const raw = res.data.data ?? res.data ?? [];
     return raw.map((item, index) => {
       const date = new Date(item.tanggal);
       const opt  = kOptions.find(o => String(o.value) === String(item.kendaraan_id)) || {};
@@ -244,7 +250,7 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
         id:             `ACT${String(index + 1).padStart(3, "0")}`,
         apiId:          item.id,
         tanggal:        date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-        waktu:          date.toTimeString().slice(0, 5).replace(":", "."),
+        waktu:          date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
         aktivitas:      item.kendaraan?.nama_kendaraan || opt.label || "-",
         kendaraanId:    item.kendaraan_id,
         emissionFactor: opt.emissionFactor ?? parseFloat(item.kendaraan?.faktor_emisi ?? 0),
@@ -254,20 +260,19 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     });
   };
 
-  // ── Fetch rumah tangga dari API ──────────────────────────
   const fetchRumahTanggaAPI = async () => {
     const res = await api.get("/rumah-tangga");
     const raw = res.data.data ?? res.data ?? [];
     return raw.map((item, index) => {
       const date = new Date(item.tanggal);
       return {
-        id:             `RT${String(index + 1).padStart(3, "0")}`,
-        apiId:          item.id,
-        tanggal:        date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-        waktu:          date.toTimeString().slice(0, 5).replace(":", "."),
-        key:            item.jenis_aktivitas,
-        nilai:          parseFloat(item.durasi_jam),
-        emisi:          parseFloat(item.emisi_karbon),
+        id:     `RT${String(index + 1).padStart(3, "0")}`,
+        apiId:  item.id,
+        tanggal: date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+        waktu:  date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+        key:    item.jenis_aktivitas,
+        nilai:  parseFloat(item.durasi_jam),
+        emisi:  parseFloat(item.emisi_karbon),
       };
     });
   };
@@ -277,9 +282,9 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
       const init = async () => {
         setLoadingT(true);
         try {
-          const resK  = await api.get("/kendaraan");
-          const rawK  = Array.isArray(resK.data) ? resK.data : resK.data.data ?? [];
-          const kOpt  = rawK.map(k => ({
+          const resK = await api.get("/kendaraan");
+          const rawK = Array.isArray(resK.data) ? resK.data : resK.data.data ?? [];
+          const kOpt = rawK.map(k => ({
             label:          k.nama_kendaraan,
             value:          k.id,
             emissionFactor: parseFloat(k.faktor_emisi),
@@ -310,15 +315,6 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     }
   }, [isTransportasi]);
 
-  const nowStr = () => {
-    const now = new Date();
-    return {
-      tanggal: now.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-      waktu:   now.toTimeString().slice(0, 5).replace(":", "."),
-    };
-  };
-
-  // ── Tambah ───────────────────────────────────────────────
   const handleTambah = async () => {
     if (!selKey || !input || parseFloat(input) <= 0) {
       alert(`Pilih ${isTransportasi ? "kendaraan" : "aktivitas"} dan isi ${isTransportasi ? "jarak" : "jumlah jam"}!`);
@@ -338,10 +334,7 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
       }
     } else {
       try {
-        await api.post("/rumah-tangga", {
-          jenis_aktivitas: selKey,
-          durasi_jam: n
-        });
+        await api.post("/rumah-tangga", { jenis_aktivitas: selKey, durasi_jam: n });
         const mapped = await fetchRumahTanggaAPI();
         setRData(mapped);
       } catch (err) {
@@ -351,39 +344,29 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     setSelKey(""); setInput("");
   };
 
-  // ── Edit ─────────────────────────────────────────────────
   const handleSaveEdit = async (idx, patch) => {
     if (isTransportasi) {
       const row = tData[idx];
       try {
-        await api.put(`/aktivitas/${row.apiId}`, {
-          kendaraan_id: patch.kendaraanId,
-          jarak_km:     patch.nilai,
-        });
+        await api.put(`/aktivitas/${row.apiId}`, { kendaraan_id: patch.kendaraanId, jarak_km: patch.nilai });
         const mapped = await fetchAktivitasAPI(transportasiOptions);
         setTData(mapped);
       } catch (err) {
-        console.error("Fallback edit lokal:", err);
         setTData(reindex(tData.map((r, i) => i === idx ? { ...r, ...patch } : r), "ACT"));
       }
     } else {
       const row = rData[idx];
       try {
-        await api.put(`/rumah-tangga/${row.apiId}`, {
-          jenis_aktivitas: patch.key,
-          durasi_jam:     patch.nilai,
-        });
+        await api.put(`/rumah-tangga/${row.apiId}`, { jenis_aktivitas: patch.key, durasi_jam: patch.nilai });
         const mapped = await fetchRumahTanggaAPI();
         setRData(mapped);
       } catch (err) {
-        console.error("Fallback edit rumah tangga lokal:", err);
         setRData(reindex(rData.map((r, i) => i === idx ? { ...r, ...patch } : r), "RT"));
       }
     }
     setModal(null);
   };
 
-  // ── Hapus ─────────────────────────────────────────────────
   const handleHapus = async (idx) => {
     if (isTransportasi) {
       const row = tData[idx];
@@ -392,7 +375,6 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
         const mapped = await fetchAktivitasAPI(transportasiOptions);
         setTData(mapped);
       } catch (err) {
-        console.error("Fallback hapus lokal:", err);
         setTData(reindex(tData.filter((_, i) => i !== idx), "ACT"));
       }
     } else {
@@ -402,18 +384,16 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
         const mapped = await fetchRumahTanggaAPI();
         setRData(mapped);
       } catch (err) {
-        console.error("Fallback hapus rumah tangga lokal:", err);
         setRData(reindex(rData.filter((_, i) => i !== idx), "RT"));
       }
     }
     setModal(null);
   };
 
-  const labelMap   = isTransportasi ? {} : rLabel;
-  const modalRow   = modal ? data[modal.idx] : null;
-  const isLoading  = isTransportasi ? loadingT : loadingR;
+  const labelMap  = isTransportasi ? {} : rLabel;
+  const modalRow  = modal ? data[modal.idx] : null;
+  const isLoading = isTransportasi ? loadingT : loadingR;
 
-  // ── Select options untuk form tambah ─────────────────────
   const formOptions = isTransportasi
     ? transportasiOptions
     : Object.entries(rLabel).map(([v, l]) => ({ value: v, label: l }));
