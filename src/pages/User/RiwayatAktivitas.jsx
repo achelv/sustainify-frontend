@@ -1,16 +1,5 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../../api";
-
-const dummyData = [
-  { no: 1, id: "ACT001", tanggal: "12 Juli 2025", waktu: "08.30", aktivitas: "Motor",        kategori: "Transportasi",  jumlah: "15 km",  emisi: 2.10 },
-  { no: 2, id: "ACT002", tanggal: "12 Juli 2025", waktu: "12.00", aktivitas: "AC",           kategori: "Rumah Tangga", jumlah: "6 jam",  emisi: 1.80 },
-  { no: 3, id: "ACT003", tanggal: "11 Juli 2025", waktu: "07.15", aktivitas: "Mobil",        kategori: "Transportasi",  jumlah: "22 km",  emisi: 3.52 },
-  { no: 4, id: "ACT004", tanggal: "11 Juli 2025", waktu: "18.45", aktivitas: "Rice Cooker",  kategori: "Rumah Tangga", jumlah: "2 jam",  emisi: 0.42 },
-  { no: 5, id: "ACT005", tanggal: "10 Juli 2025", waktu: "09.00", aktivitas: "Bus",          kategori: "Transportasi",  jumlah: "30 km",  emisi: 1.95 },
-  { no: 6, id: "ACT006", tanggal: "10 Juli 2025", waktu: "20.00", aktivitas: "TV",           kategori: "Rumah Tangga", jumlah: "4 jam",  emisi: 0.60 },
-  { no: 7, id: "ACT007", tanggal: "9 Juli 2025",  waktu: "08.00", aktivitas: "Sepeda Motor", kategori: "Transportasi",  jumlah: "10 km",  emisi: 1.40 },
-  { no: 8, id: "ACT008", tanggal: "9 Juli 2025",  waktu: "19.30", aktivitas: "Kulkas",       kategori: "Rumah Tangga", jumlah: "24 jam", emisi: 0.96 },
-];
 
 // ── Overlay ──────────────────────────────────────────────────
 const Overlay = ({ children, onClose }) => (
@@ -105,13 +94,12 @@ const ModalEdit = ({ row, onSave, onClose }) => {
         {[
           { label: "Tanggal", value: row.tanggal, disabled: true },
           { label: "Waktu",   value: row.waktu,   disabled: true },
-        ].map(({ label, value, disabled }) => (
+        ].map(({ label, value }) => (
           <div key={label}>
             <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>{label}</label>
             <input value={value} disabled style={{ ...inpStyle, background: "#f9fafb", color: "#9ca3af", cursor: "not-allowed" }} />
           </div>
         ))}
-
         <div>
           <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Kategori</label>
           <select value={kategori} onChange={e => setKategori(e.target.value)} style={inpStyle}>
@@ -119,18 +107,15 @@ const ModalEdit = ({ row, onSave, onClose }) => {
             <option>Rumah Tangga</option>
           </select>
         </div>
-
         <div>
           <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Aktivitas</label>
           <input value={aktivitas} onChange={e => setAktivitas(e.target.value)} style={inpStyle} />
         </div>
-
         <div>
           <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Jumlah</label>
           <input value={jumlah} onChange={e => setJumlah(e.target.value)} style={inpStyle} />
         </div>
       </div>
-
       <div style={{ display: "flex", gap: "8px" }}>
         <button onClick={onClose} style={btnSecondary}>Batal</button>
         <button onClick={() => onSave({ ...row, aktivitas, jumlah, kategori })} style={btnPrimary}>Simpan</button>
@@ -166,10 +151,25 @@ const ModalHapus = ({ row, onConfirm, onClose }) => (
 // ── Dropdown aksi ⋮ ─────────────────────────────────────────
 const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
   const [open, setOpen] = useState(false);
+  const [pos,  setPos]  = useState({ top: 0, right: 0 });
+  const btnRef = React.useRef(null);
+
+  const handleOpen = () => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setPos({
+        top:   rect.bottom + window.scrollY + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen(v => !v);
+  };
+
   return (
     <div style={{ position: "relative" }}>
       <button
-        onClick={() => setOpen(v => !v)}
+        ref={btnRef}
+        onClick={handleOpen}
         style={{
           width: "30px", height: "30px", borderRadius: "7px",
           background: "#f9fafb", border: "1px solid #e5e7eb",
@@ -182,7 +182,9 @@ const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
           <div style={{
-            position: "absolute", right: 0, top: "34px",
+            position: "fixed",
+            top:   pos.top,
+            right: pos.right,
             background: "#fff", border: "1px solid #e5e7eb",
             borderRadius: "10px", zIndex: 100,
             minWidth: "130px", padding: "4px 0",
@@ -240,59 +242,61 @@ const RiwayatAktivitas = () => {
   const [filterKategori, setFilterKategori] = useState("Semua");
   const [showFilter,     setShowFilter]     = useState(false);
   const [data,           setData]           = useState([]);
+  const [loading,        setLoading]        = useState(true);
   const [modal,          setModal]          = useState(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Fetch transportasi
-        const resT   = await api.get("/aktivitas");
-        const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
-        const mappedT = (resT.data.data ?? []).map((item) => {
-          const date = new Date(item.tanggal);
-          return {
-            id:       `ACT${String(item.id).padStart(3, "0")}`,
-            apiId:    item.id,
-            tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-            waktu: new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
-            aktivitas: item.kendaraan?.nama_kendaraan || "-",
-            kategori: "Transportasi",
-            jumlah:   `${item.jarak_km} km`,
-            emisi:    parseFloat(item.emisi_karbon),
-            _date:    new Date(item.tanggal),
-          };
-        });
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
 
-        // Fetch rumah tangga
-        const resR   = await api.get("/rumah-tangga");
-        const mappedR = (resR.data.data ?? []).map((item) => {
-          const date = new Date(item.tanggal);
-          return {
-            id:       `RT${String(item.id).padStart(3, "0")}`,
-            apiId:    item.id,
-            tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-            waktu: new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
-            aktivitas: labelMap[item.jenis_aktivitas] || item.jenis_aktivitas,
-            kategori: "Rumah Tangga",
-            jumlah:   `${item.durasi_jam} jam`,
-            emisi:    parseFloat(item.emisi_karbon),
-            _date:    new Date(item.tanggal),
-          };
-        });
+      const resT = await api.get("/aktivitas");
+      const mappedT = (resT.data.data ?? []).map((item) => {
+        const date = new Date(item.tanggal);
+        return {
+          id:       `ACT${String(item.id).padStart(3, "0")}`,
+          apiId:    item.id,
+          kategoriApi: "transportasi",
+          tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+          waktu:    new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+          aktivitas: item.kendaraan?.nama_kendaraan || "-",
+          kategori: "Transportasi",
+          jumlah:   `${item.jarak_km} km`,
+          emisi:    parseFloat(item.emisi_karbon),
+          _date:    date,
+        };
+      });
 
-        // Gabungkan, urutkan terbaru, kasih nomor urut
-        const combined = [...mappedT, ...mappedR]
-          .sort((a, b) => b._date - a._date)
-          .map((r, i) => ({ ...r, no: i + 1 }));
+      const resR = await api.get("/rumah-tangga");
+      const mappedR = (resR.data.data ?? []).map((item) => {
+        const date = new Date(item.tanggal);
+        return {
+          id:       `RT${String(item.id).padStart(3, "0")}`,
+          apiId:    item.id,
+          kategoriApi: "rumah-tangga",
+          tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+          waktu:    new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+          aktivitas: labelMap[item.jenis_aktivitas] || item.jenis_aktivitas,
+          kategori: "Rumah Tangga",
+          jumlah:   `${item.durasi_jam} jam`,
+          emisi:    parseFloat(item.emisi_karbon),
+          _date:    date,
+        };
+      });
 
-        setData(combined);
-      } catch (err) {
-        console.error("Gagal fetch data:", err);
-        setData(dummyData);
-      }
-    };
-    fetchData();
-  }, []);
+      const combined = [...mappedT, ...mappedR]
+        .sort((a, b) => b._date - a._date)
+        .map((r, i) => ({ ...r, no: i + 1 }));
+
+      setData(combined);
+    } catch (err) {
+      console.error("Gagal fetch data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchData(); }, []);
 
   const filtered = data.filter(row => {
     const matchSearch =
@@ -308,8 +312,17 @@ const RiwayatAktivitas = () => {
     setModal(null);
   };
 
-  const handleHapus = (id) => {
-    setData(prev => prev.filter(r => r.id !== id).map((r, i) => ({ ...r, no: i + 1 })));
+  const handleHapus = async (row) => {
+    try {
+      if (row.kategoriApi === "transportasi") {
+        await api.delete(`/aktivitas/${row.apiId}`);
+      } else {
+        await api.delete(`/rumah-tangga/${row.apiId}`);
+      }
+      await fetchData();
+    } catch (err) {
+      console.error("Gagal hapus:", err);
+    }
     setModal(null);
   };
 
@@ -337,8 +350,6 @@ const RiwayatAktivitas = () => {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
           <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#111827" }}>Riwayat Aktivitas</h3>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-
-            {/* Search */}
             <div style={{ position: "relative" }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                 style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
@@ -351,7 +362,6 @@ const RiwayatAktivitas = () => {
               />
             </div>
 
-            {/* Filter */}
             <div style={{ position: "relative" }}>
               <button
                 onClick={() => setShowFilter(p => !p)}
@@ -383,7 +393,6 @@ const RiwayatAktivitas = () => {
                 </>
               )}
             </div>
-
           </div>
         </div>
 
@@ -409,7 +418,9 @@ const RiwayatAktivitas = () => {
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <tr><td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>Memuat data...</td></tr>
+              ) : filtered.length === 0 ? (
                 <tr>
                   <td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
                     Tidak ada data ditemukan
@@ -464,7 +475,7 @@ const RiwayatAktivitas = () => {
         <ModalEdit row={modal.row} onSave={handleSaveEdit} onClose={() => setModal(null)} />
       )}
       {modal?.mode === "hapus" && (
-        <ModalHapus row={modal.row} onConfirm={() => handleHapus(modal.row.id)} onClose={() => setModal(null)} />
+        <ModalHapus row={modal.row} onConfirm={() => handleHapus(modal.row)} onClose={() => setModal(null)} />
       )}
     </div>
   );
