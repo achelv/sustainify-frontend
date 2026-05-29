@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import api from "../../api";
+import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../../components/icons/Icon";
 
 // ── Overlay ──────────────────────────────────────────────────
 const Overlay = ({ children, onClose }) => (
@@ -43,7 +44,7 @@ const ModalHeader = ({ icon, title, sub, onClose }) => (
 const ModalDetail = ({ row, onClose }) => (
   <Overlay onClose={onClose}>
     <ModalHeader
-      icon={row.kategori === "Transportasi" ? "🚗" : "🏠"}
+      icon={row.kategori === "Transportasi" ? <TransportIcon /> : <HouseIcon />}
       title="Detail aktivitas"
       sub={row.id}
       onClose={onClose}
@@ -89,7 +90,7 @@ const ModalEdit = ({ row, onSave, onClose }) => {
 
   return (
     <Overlay onClose={onClose}>
-      <ModalHeader icon="✏️" title="Edit aktivitas" sub={row.id} onClose={onClose} />
+      <ModalHeader icon={<EditIcon size={18} />} title="Edit aktivitas" sub={row.id} onClose={onClose} />
       <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
         {[
           { label: "Tanggal", value: row.tanggal, disabled: true },
@@ -131,8 +132,10 @@ const ModalHapus = ({ row, onConfirm, onClose }) => (
       <div style={{
         width: "52px", height: "52px", borderRadius: "14px",
         background: "#fef2f2", display: "flex", alignItems: "center",
-        justifyContent: "center", margin: "0 auto 14px", fontSize: "24px",
-      }}>🗑️</div>
+        justifyContent: "center", margin: "0 auto 14px",
+      }}>
+        <DeleteIcon />
+      </div>
       <p style={{ fontSize: "15px", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>Hapus aktivitas?</p>
       <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>
         Aktivitas <strong>{row.aktivitas}</strong> ({row.id})
@@ -191,9 +194,9 @@ const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
             boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
           }}>
             {[
-              { icon: "👁️", label: "Detail", color: "#166534", action: onDetail },
-              { icon: "✏️", label: "Edit",   color: "#166534", action: onEdit   },
-              { icon: "🗑️", label: "Hapus",  color: "#dc2626", action: onHapus  },
+              { icon: <DetailIcon />, label: "Detail", color: "#166534", action: onDetail },
+              { icon: <EditIcon />,   label: "Edit",   color: "#166534", action: onEdit   },
+              { icon: <DeleteIcon />, label: "Hapus",  color: "#dc2626", action: onHapus  },
             ].map(({ icon, label, color, action }) => (
               <button
                 key={label}

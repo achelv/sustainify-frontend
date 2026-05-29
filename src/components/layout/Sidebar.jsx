@@ -379,28 +379,6 @@ const Sidebar = ({ activeMenu, onMenuChange, navItems, onAddAccount, onLogout, o
     <div style={{ height: "1px", background: "#e5e7eb", margin: "0 12px" }} />
 
     <button
-      onClick={() => { setShowUserDropdown(false); onAddAccount?.(); }}
-      style={{
-        display: "flex", alignItems: "center", gap: "10px",
-        width: "100%", padding: "12px 16px", border: "none",
-        background: "transparent", cursor: "pointer",
-        fontSize: "13px", fontFamily: "inherit", color: "#1d4ed8", fontWeight: 500,
-      }}
-      onMouseEnter={e => e.currentTarget.style.background = "#eff6ff"}
-      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-    >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: "16px", height: "16px" }}>
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
-        <line x1="19" y1="8" x2="19" y2="14" />
-        <line x1="16" y1="11" x2="22" y2="11" />
-      </svg>
-      Tambah Akun
-    </button>
-
-    <div style={{ height: "1px", background: "#e5e7eb", margin: "0 12px" }} />
-
-    <button
       onClick={() => { setShowUserDropdown(false); onLogout?.(); }}
       style={{
         display: "flex", alignItems: "center", gap: "10px",
