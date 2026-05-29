@@ -49,11 +49,8 @@ export default function LoginAdmin({ onLogin }) {
       <div style={styles.card}>
 
         {/* Logo */}
-        <div style={styles.logoWrap}>
-          <div style={styles.logoIcon}>S</div>
           <div style={styles.brandTitle}>Sustainify</div>
           <div style={styles.brandSub}>Masuk ke panel admin</div>
-        </div>
 
         {/* Alert */}
         {alert.msg && (

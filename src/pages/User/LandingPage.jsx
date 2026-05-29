@@ -142,19 +142,10 @@ const FeatureIcon = ({ type, size = 22 }) => {
 
 /* ── LOGO ── */
 const Logo = ({ light = false }) => (
-  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-    <div style={{
-      width: 38, height: 38, borderRadius: "50%",
-      background: light ? "rgba(255,255,255,0.18)" : "#1a5c30",
-      display: "flex", alignItems: "center", justifyContent: "center",
-    }}>
-      <LeafIcon size={20} color="#fff" />
-    </div>
     <div>
       <div style={{ fontFamily: "Poppins,sans-serif", fontWeight: 800, fontSize: "1.05rem", color: light ? "#fff" : "#1a5c30", lineHeight: 1.15 }}>Sustainify</div>
       <div style={{ fontFamily: "Poppins,sans-serif", fontSize: "0.6rem", color: light ? "#b7f5c8" : "#2e8b57", fontWeight: 500, lineHeight: 1 }}>Langkah kecil, dampak besar</div>
     </div>
-  </div>
 );
 
 /* ── NAVBAR ── */
@@ -330,7 +321,7 @@ const Features = () => {
         <div style={{ textAlign: "center", marginBottom: "3rem" }}>
           <div style={{ fontFamily: "Poppins,sans-serif", fontSize: "0.72rem", color: "#86efac", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: "0.6rem" }}>FITUR ANDALAN</div>
           <h2 style={{ fontFamily: "Poppins,sans-serif", fontSize: "clamp(1.6rem,3.5vw,2.2rem)", fontWeight: 800, color: "#fff", marginBottom: "0.75rem" }}>
-            Semua yang kamu butuhkan dalam satu platform.
+            Pantau, Kurangi, dan Jaga Bumi Bersamamu.
           </h2>
           <p style={{ fontFamily: "Poppins,sans-serif", color: "#86efac", fontSize: "0.9rem", lineHeight: 1.75, maxWidth: 480, margin: "0 auto" }}>
             Solusi pintar untuk membantu memahami, memantau, dan mengurangi jejak karbon dalam aktivitas sehari-hari.
@@ -633,7 +624,7 @@ const Footer = () => (
       <Logo light />
       <div style={{ display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ fontFamily: "Poppins,sans-serif", color: "#2d6a4f", fontSize: "0.75rem" }}>© 2024 Sustainify. All rights reserved.</span>
-        <span style={{ fontFamily: "Poppins,sans-serif", color: "#2d6a4f", fontSize: "0.75rem" }}>Made with 🌱 for the planet</span>
+        <span style={{ fontFamily: "Poppins,sans-serif", color: "#2d6a4f", fontSize: "0.75rem" }}>Made with leaf for the planet</span>
       </div>
     </div>
   </footer>

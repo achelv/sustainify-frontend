@@ -78,7 +78,6 @@ function Register({ onRegisterSuccess }) {
 
         {/* Logo */}
         <div style={styles.logoWrap}>
-          <div style={styles.logoIcon}>S</div>
           <div style={styles.brandTitle}>Sustainafy</div>
           <div style={styles.brandSub}>Buat akun baru Anda</div>
         </div>

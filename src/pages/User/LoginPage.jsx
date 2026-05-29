@@ -38,9 +38,6 @@ const LoginPage = ({ onLogin }) => {
       }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "32px" }}>
-          <div style={{ width: "56px", height: "56px", background: "#166534", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-            <span style={{ color: "#fff", fontSize: "22px", fontWeight: 900 }}>S</span>
-          </div>
           <h1 style={{ fontSize: "22px", fontWeight: 800, color: "#14532d" }}>Sustainafy</h1>
           <p style={{ fontSize: "13px", color: "#6b7280", marginTop: "4px" }}>Masuk ke akun Anda</p>
         </div>
@@ -57,7 +54,7 @@ const LoginPage = ({ onLogin }) => {
           <label style={{ fontSize: "13px", fontWeight: 600, color: "#374151", display: "block", marginBottom: "6px" }}>Email</label>
           <input
             type="email"
-            placeholder="raina@sustainafy.com"
+            placeholder="masukkan email anda"
             value={email}
             onChange={e => setEmail(e.target.value)}
             style={{ width: "100%", padding: "12px 16px", borderRadius: "10px", border: "1.5px solid #e5e7eb", fontSize: "14px", fontFamily: "inherit", outline: "none" }}
