@@ -1,16 +1,19 @@
 import { useState } from "react";
+import api from "../../api";
 
 const getUserFromToken = () => {
   try {
     const token = localStorage.getItem("token");
-    if (!token) return { name: "Raina", email: "raina@sustainify.com" };
+    const stored = JSON.parse(localStorage.getItem("user") || "{}");
+    if (stored?.name) return { name: stored.name, email: stored.email || "-" };
+    if (!token) return { name: "User", email: "-" };
     const payload = JSON.parse(atob(token.split(".")[1]));
     return {
       name: payload.name || payload.username || "User",
       email: payload.email || "-",
     };
   } catch {
-    return { name: "Raina", email: "raina@sustainify.com" };
+    return { name: "User", email: "-" };
   }
 };
 
@@ -79,13 +82,44 @@ const ProfileModal = ({ onClose }) => {
   const [newPassword, setNewPassword] = useState("");
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Inisial dari email
   const avatarInitials = user.email.slice(0, 2).toUpperCase();
 
-  const handleSave = () => {
-    // TODO: hit API untuk simpan nama & password
-    onClose();
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const payload = { name };
+
+      if (newPassword) {
+        if (!oldPassword) {
+          setError("Masukkan password lama terlebih dahulu");
+          setLoading(false);
+          return;
+        }
+        payload.old_password = oldPassword;
+        payload.new_password = newPassword;
+      }
+
+      const res = await api.put("/profile", payload);
+
+      if (res.data.success) {
+        const stored = JSON.parse(localStorage.getItem("user") || "{}");
+        stored.name = res.data.user.name;
+        localStorage.setItem("user", JSON.stringify(stored));
+
+        onClose();
+        window.location.reload();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || "Gagal menyimpan perubahan";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -135,7 +169,7 @@ const ProfileModal = ({ onClose }) => {
           </button>
         </div>
 
-        {/* Avatar — inisial dari email, tanpa kamera */}
+        {/* Avatar */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 24px 8px" }}>
           <div style={{
             width: "84px", height: "84px", borderRadius: "50%",
@@ -155,6 +189,18 @@ const ProfileModal = ({ onClose }) => {
 
         {/* Form */}
         <div style={{ padding: "20px 24px 28px" }}>
+
+          {/* Error message */}
+          {error && (
+            <div style={{
+              background: "#fef2f2", border: "1px solid #fecaca",
+              borderRadius: "10px", padding: "10px 14px",
+              fontSize: "13px", color: "#dc2626", marginBottom: "14px",
+            }}>
+              {error}
+            </div>
+          )}
+
           <InputField
             label="Nama Pengguna"
             value={name}
@@ -178,10 +224,8 @@ const ProfileModal = ({ onClose }) => {
             type={showOld ? "text" : "password"}
             placeholder="Masukkan password lama"
             rightEl={
-              <button
-                onClick={() => setShowOld(!showOld)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 0, display: "flex" }}
-              >
+              <button onClick={() => setShowOld(!showOld)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 0, display: "flex" }}>
                 <EyeIcon open={showOld} />
               </button>
             }
@@ -194,10 +238,8 @@ const ProfileModal = ({ onClose }) => {
             type={showNew ? "text" : "password"}
             placeholder="Masukkan password baru"
             rightEl={
-              <button
-                onClick={() => setShowNew(!showNew)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 0, display: "flex" }}
-              >
+              <button onClick={() => setShowNew(!showNew)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 0, display: "flex" }}>
                 <EyeIcon open={showNew} />
               </button>
             }
@@ -205,16 +247,19 @@ const ProfileModal = ({ onClose }) => {
 
           <button
             onClick={handleSave}
+            disabled={loading}
             style={{
               width: "100%", padding: "12px", borderRadius: "12px",
-              background: "#14532d", color: "#fff", border: "none",
+              background: loading ? "#9ca3af" : "#14532d",
+              color: "#fff", border: "none",
               fontSize: "14px", fontWeight: 600, fontFamily: "inherit",
-              cursor: "pointer", transition: "background 0.15s", marginTop: "4px",
+              cursor: loading ? "not-allowed" : "pointer",
+              transition: "background 0.15s", marginTop: "4px",
             }}
-            onMouseEnter={e => e.currentTarget.style.background = "#166534"}
-            onMouseLeave={e => e.currentTarget.style.background = "#14532d"}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.background = "#166534"; }}
+            onMouseLeave={e => { if (!loading) e.currentTarget.style.background = "#14532d"; }}
           >
-            Simpan Perubahan
+            {loading ? "Menyimpan..." : "Simpan Perubahan"}
           </button>
         </div>
       </div>
