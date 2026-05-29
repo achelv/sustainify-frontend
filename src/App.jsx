@@ -190,7 +190,7 @@ const App = () => {
   if (!isLoggedIn) {
     const path = window.location.pathname;
     if (path === "/register") return <Register onRegisterSuccess={handleLogin} />;
-    if (path === "/login") return <LoginPage onRegisterSuccess={handleLogin} />;
+    if (path === "/login") return <LoginPage onLogin={handleLogin} />;
     return <LandingPage />;
   }
 
