@@ -1,15 +1,5 @@
-import { useState } from "react";
-
-const initialUsers = [
-  { id: "K00T21", nama: "Andi Rahma", email: "andi@gmail.com", emisi: 24.5, status: "Aktif" },
-  { id: "K00T32", nama: "Budi Pratama", email: "budi@email.com", emisi: 12, status: "Aktif" },
-  { id: "K00T02", nama: "Nabila Putri", email: "nabila@email.com", emisi: 13.7, status: "Aktif" },
-  { id: "K00T12", nama: "Rizky Hidayat", email: "rizky@gmail.com", emisi: 20, status: "Nonaktif" },
-  { id: "K00T05", nama: "Siti Rahma", email: "siti@gmail.com", emisi: 18.4, status: "Aktif" },
-  { id: "K00T29", nama: "Bobi", email: "bobi@gmail.com", emisi: 11, status: "Aktif" },
-  { id: "K00T15", nama: "Amara", email: "amara@gmail.com", emisi: 19.2, status: "Nonaktif" },
-  { id: "K00T13", nama: "Budi Hariyanto", email: "budihar@gmail.com", emisi: 15, status: "Aktif" },
-];
+import React, { useState, useEffect } from "react";
+import api from "../../api";
 
 // ── Icons ────────────────────────────────────────────────────
 const SearchIcon = () => (
@@ -55,7 +45,7 @@ const UserIcon = () => (
   </svg>
 );
 
-// ── Overlay/Modal wrapper ────────────────────────────────────
+// ── Overlay ──────────────────────────────────────────────────
 const Overlay = ({ onClose, children }) => (
   <div onClick={onClose} style={{
     position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
@@ -72,7 +62,7 @@ const modalBox = {
   padding: "32px", width: "420px", maxWidth: "90vw",
 };
 
-// ── Modal: Detail User ───────────────────────────────────────
+// ── Modal Detail ─────────────────────────────────────────────
 const DetailModal = ({ user, onClose }) => (
   <Overlay onClose={onClose}>
     <div style={modalBox}>
@@ -86,18 +76,12 @@ const DetailModal = ({ user, onClose }) => (
           background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center",
           color: "#14532d", marginBottom: "12px",
         }}><UserIcon /></div>
-        <div style={{ fontSize: "18px", fontWeight: 700, color: "#111827" }}>{user.nama}</div>
-        <div style={{
-          marginTop: "6px", padding: "3px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: 600,
-          background: user.status === "Aktif" ? "#dcfce7" : "#fee2e2",
-          color: user.status === "Aktif" ? "#14532d" : "#dc2626",
-        }}>{user.status}</div>
+        <div style={{ fontSize: "18px", fontWeight: 700, color: "#111827" }}>{user.name}</div>
       </div>
       {[
         ["ID Pengguna", user.id],
-        ["Email", user.email],
+        ["Email",       user.email],
         ["Emisi Karbon", `${user.emisi} kg CO₂`],
-        ["Status", user.status],
       ].map(([label, val]) => (
         <div key={label} style={{
           display: "flex", justifyContent: "space-between",
@@ -116,21 +100,28 @@ const DetailModal = ({ user, onClose }) => (
   </Overlay>
 );
 
-// ── Modal: Tambah/Edit User ──────────────────────────────────
+// ── Modal Edit ────────────────────────────────────────────────
 const FormModal = ({ user, onClose, onSave }) => {
   const isEdit = !!user;
-  const [form, setForm] = useState(user || { id: "", nama: "", email: "", emisi: "", status: "Aktif" });
+  const [form, setForm] = useState(user || { name: "", email: "" });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
 
-  const handleSave = () => {
-    if (!form.nama || !form.email) return;
-    onSave({
-      ...form,
-      emisi: parseFloat(form.emisi) || 0,
-      id: form.id || `K00T${Math.floor(Math.random() * 90 + 10)}`,
-    });
-    onClose();
+  const handleSave = async () => {
+    if (!form.name || !form.email) return;
+    setLoading(true);
+    try {
+      if (isEdit) {
+        await api.put(`/admin/users/${user.id}`, { name: form.name, email: form.email });
+      }
+      onSave();
+      onClose();
+    } catch (err) {
+      console.error("Gagal simpan user:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputStyle = {
@@ -144,15 +135,14 @@ const FormModal = ({ user, onClose, onSave }) => {
       <div style={modalBox}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
           <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#14532d" }}>
-            {isEdit ? "Edit Pengguna" : "Tambah Pengguna"}
+            {isEdit ? "Edit Pengguna" : "Detail Pengguna"}
           </h3>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><CloseIcon /></button>
         </div>
 
         {[
-          { label: "Nama", field: "nama", type: "text", placeholder: "Nama lengkap" },
+          { label: "Nama", field: "name", type: "text", placeholder: "Nama lengkap" },
           { label: "Email", field: "email", type: "email", placeholder: "email@gmail.com" },
-          { label: "Emisi Karbon (kg CO₂)", field: "emisi", type: "number", placeholder: "0.0" },
         ].map(({ label, field, type, placeholder }) => (
           <div key={field} style={{ marginBottom: "14px" }}>
             <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>{label}</label>
@@ -166,31 +156,23 @@ const FormModal = ({ user, onClose, onSave }) => {
           </div>
         ))}
 
-        <div style={{ marginBottom: "20px" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Status</label>
-          <select value={form.status} onChange={e => handleChange("status", e.target.value)}
-            style={{ ...inputStyle, background: "#fff" }}>
-            <option>Aktif</option>
-            <option>Nonaktif</option>
-          </select>
-        </div>
-
-        <div style={{ display: "flex", gap: "10px" }}>
+        <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
           <button onClick={onClose} style={{
             flex: 1, padding: "11px", background: "#f3f4f6", color: "#374151",
             border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer", fontSize: "14px",
           }}>Batal</button>
-          <button onClick={handleSave} style={{
+          <button onClick={handleSave} disabled={loading} style={{
             flex: 1, padding: "11px", background: "#14532d", color: "#fff",
             border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer", fontSize: "14px",
-          }}>Simpan</button>
+            opacity: loading ? 0.7 : 1,
+          }}>{loading ? "Menyimpan..." : "Simpan"}</button>
         </div>
       </div>
     </Overlay>
   );
 };
 
-// ── Modal: Konfirmasi Hapus ──────────────────────────────────
+// ── Modal Hapus ──────────────────────────────────────────────
 const DeleteModal = ({ user, onClose, onConfirm }) => (
   <Overlay onClose={onClose}>
     <div style={{ ...modalBox, width: "360px", textAlign: "center" }}>
@@ -203,7 +185,7 @@ const DeleteModal = ({ user, onClose, onConfirm }) => (
       </div>
       <h3 style={{ margin: "0 0 8px", fontSize: "18px", fontWeight: 700, color: "#111827" }}>Hapus Pengguna?</h3>
       <p style={{ margin: "0 0 24px", fontSize: "14px", color: "#6b7280", lineHeight: 1.6 }}>
-        Kamu yakin ingin menghapus <strong>{user.nama}</strong>? Aksi ini tidak bisa dibatalkan.
+        Kamu yakin ingin menghapus <strong>{user.name}</strong>? Aksi ini tidak bisa dibatalkan.
       </p>
       <div style={{ display: "flex", gap: "10px" }}>
         <button onClick={onClose} style={{
@@ -219,7 +201,7 @@ const DeleteModal = ({ user, onClose, onConfirm }) => (
   </Overlay>
 );
 
-// ── Modal: Filter ────────────────────────────────────────────
+// ── Modal Filter ─────────────────────────────────────────────
 const FilterModal = ({ filter, onClose, onApply }) => {
   const [local, setLocal] = useState(filter);
   return (
@@ -229,32 +211,19 @@ const FilterModal = ({ filter, onClose, onApply }) => {
           <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#14532d" }}>Filter</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><CloseIcon /></button>
         </div>
-
-        <div style={{ marginBottom: "16px" }}>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>Status</label>
-          {["Semua", "Aktif", "Nonaktif"].map(s => (
-            <label key={s} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", cursor: "pointer", fontSize: "14px", color: "#374151" }}>
-              <input type="radio" name="status" checked={local.status === s}
-                onChange={() => setLocal(p => ({ ...p, status: s }))} />
-              {s}
-            </label>
-          ))}
-        </div>
-
         <div style={{ marginBottom: "20px" }}>
           <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "8px" }}>
             Emisi Karbon maks: <strong>{local.maxEmisi} kg</strong>
           </label>
-          <input type="range" min="0" max="50" value={local.maxEmisi}
+          <input type="range" min="0" max="500" value={local.maxEmisi}
             onChange={e => setLocal(p => ({ ...p, maxEmisi: Number(e.target.value) }))}
             style={{ width: "100%", accentColor: "#14532d" }} />
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#9ca3af" }}>
-            <span>0 kg</span><span>50 kg</span>
+            <span>0 kg</span><span>500 kg</span>
           </div>
         </div>
-
         <div style={{ display: "flex", gap: "10px" }}>
-          <button onClick={() => { setLocal({ status: "Semua", maxEmisi: 50 }); }} style={{
+          <button onClick={() => setLocal({ maxEmisi: 500 })} style={{
             flex: 1, padding: "11px", background: "#f3f4f6", color: "#374151",
             border: "none", borderRadius: "10px", fontWeight: 600, cursor: "pointer",
           }}>Reset</button>
@@ -270,40 +239,50 @@ const FilterModal = ({ filter, onClose, onApply }) => {
 
 // ── Main Component ───────────────────────────────────────────
 const ManajemenUser = () => {
-  const [users, setUsers] = useState(initialUsers);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState({ status: "Semua", maxEmisi: 50 });
-  const [page, setPage] = useState(1);
+  const [users,   setUsers]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search,  setSearch]  = useState("");
+  const [filter,  setFilter]  = useState({ maxEmisi: 500 });
+  const [page,    setPage]    = useState(1);
   const perPage = 8;
 
-  const [modal, setModal] = useState(null); // { type: "detail"|"edit"|"delete"|"tambah"|"filter", user? }
+  const [modal, setModal] = useState(null);
 
-  const filtered = users.filter(u => {
-    const matchSearch = u.nama.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.id.toLowerCase().includes(search.toLowerCase());
-    const matchStatus = filter.status === "Semua" || u.status === filter.status;
-    const matchEmisi = u.emisi <= filter.maxEmisi;
-    return matchSearch && matchStatus && matchEmisi;
-  });
-
-  const totalPages = Math.ceil(filtered.length / perPage);
-  const paginated = filtered.slice((page - 1) * perPage, page * perPage);
-
-  const totalAktif = users.filter(u => u.status === "Aktif").length;
-  const totalNonaktif = users.filter(u => u.status === "Nonaktif").length;
-
-  const handleSave = (data) => {
-    if (users.find(u => u.id === data.id)) {
-      setUsers(prev => prev.map(u => u.id === data.id ? data : u));
-    } else {
-      setUsers(prev => [...prev, data]);
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/admin/users");
+      setUsers(res.data.data ?? []);
+    } catch (err) {
+      console.error("Gagal fetch users:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDelete = (id) => setUsers(prev => prev.filter(u => u.id !== id));
+  useEffect(() => { fetchUsers(); }, []);
 
-  const StatCard = ({ label, value, sub, color, bg }) => (
+  const filtered = users.filter(u => {
+    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase()) ||
+      String(u.id).includes(search);
+    const matchEmisi = u.emisi <= filter.maxEmisi;
+    return matchSearch && matchEmisi;
+  });
+
+  const totalPages = Math.ceil(filtered.length / perPage);
+  const paginated  = filtered.slice((page - 1) * perPage, page * perPage);
+
+  const handleDelete = async (id) => {
+    try {
+      await api.delete(`/admin/users/${id}`);
+      await fetchUsers();
+    } catch (err) {
+      console.error("Gagal hapus user:", err);
+    }
+  };
+
+  const StatCard = ({ label, value, sub, color }) => (
     <div style={{
       background: "#fff", borderRadius: "14px", padding: "18px 22px",
       flex: 1, boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
@@ -313,22 +292,6 @@ const ManajemenUser = () => {
       <div style={{ fontSize: "11px", color, marginTop: "4px" }}>{sub}</div>
     </div>
   );
-
-  const btnAksi = (bg, hoverBg, onClick, children, title) => {
-    const [hovered, setHovered] = useState(false);
-    return (
-      <button title={title} onClick={onClick}
-        onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-        style={{
-          width: "30px", height: "30px", borderRadius: "8px", border: "none",
-          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          background: hovered ? hoverBg : bg, transition: "background 0.15s",
-          color: hovered ? "#fff" : "#374151",
-        }}>
-        {children}
-      </button>
-    );
-  };
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -340,11 +303,15 @@ const ManajemenUser = () => {
           padding: "20px 28px", flex: "0 0 200px", boxShadow: "0 4px 16px rgba(20,83,45,0.3)",
         }}>
           <div style={{ fontSize: "16px", fontWeight: 800, color: "#fff" }}>Selamat datang,<br />Admin!</div>
-          <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.8)", marginTop: "6px" }}>Aktivitas meningkat 8%<br />dari kemarin.</div>
+          <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.8)", marginTop: "6px" }}>Kelola data pengguna.</div>
         </div>
-        <StatCard label="Total Pengguna" value={users.length} sub="+12 bulan ini" color="#22c55e" />
-        <StatCard label="Aktif" value={totalAktif} sub="↑ 6% dari bulan lalu" color="#22c55e" />
-        <StatCard label="Nonaktif" value={totalNonaktif} sub="↓ 10% dari bulan lalu" color="#ef4444" />
+        <StatCard label="Total Pengguna" value={users.length}  sub="Pengguna terdaftar" color="#22c55e" />
+        <StatCard
+          label="Total Emisi"
+          value={`${users.reduce((s, u) => s + u.emisi, 0).toFixed(2)} kg`}
+          sub="Semua pengguna"
+          color="#22c55e"
+        />
       </div>
 
       {/* Tabel */}
@@ -352,7 +319,6 @@ const ManajemenUser = () => {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
           <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>Manajemen User</div>
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
-            {/* Search */}
             <div style={{ position: "relative" }}>
               <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}><SearchIcon /></span>
               <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -365,21 +331,14 @@ const ManajemenUser = () => {
                 onBlur={e => e.target.style.borderColor = "#e5e7eb"}
               />
             </div>
-            {/* Filter */}
             <button onClick={() => setModal({ type: "filter" })} style={{
               display: "flex", alignItems: "center", gap: "6px",
               padding: "8px 16px", border: "1.5px solid #e5e7eb", borderRadius: "10px",
-              background: filter.status !== "Semua" || filter.maxEmisi < 50 ? "#dcfce7" : "#fff",
+              background: filter.maxEmisi < 500 ? "#dcfce7" : "#fff",
               color: "#374151", cursor: "pointer", fontSize: "13px", fontWeight: 500,
             }}>
-              <FilterIcon /> Filter {filter.status !== "Semua" || filter.maxEmisi < 50 ? "✓" : ""}
+              <FilterIcon /> Filter {filter.maxEmisi < 500 ? "✓" : ""}
             </button>
-            {/* Tambah */}
-            <button onClick={() => setModal({ type: "tambah" })} style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              width: "36px", height: "36px", background: "#14532d", color: "#fff",
-              border: "none", borderRadius: "10px", cursor: "pointer",
-            }}><PlusIcon /></button>
           </div>
         </div>
 
@@ -388,7 +347,7 @@ const ManajemenUser = () => {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
               <tr style={{ background: "#f9fafb" }}>
-                {["ID", "Nama", "Email", "Emisi Karbon", "Status", "Aksi"].map(h => (
+                {["ID", "Nama", "Email", "Emisi Karbon", "Aksi"].map(h => (
                   <th key={h} style={{
                     padding: "10px 14px", textAlign: "left", color: "#6b7280",
                     fontWeight: 600, borderBottom: "1px solid #e5e7eb", whiteSpace: "nowrap",
@@ -397,43 +356,35 @@ const ManajemenUser = () => {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", padding: "32px", color: "#9ca3af" }}>Tidak ada data</td></tr>
+              {loading ? (
+                <tr><td colSpan={5} style={{ textAlign: "center", padding: "32px", color: "#9ca3af" }}>Memuat data...</td></tr>
+              ) : paginated.length === 0 ? (
+                <tr><td colSpan={5} style={{ textAlign: "center", padding: "32px", color: "#9ca3af" }}>Tidak ada data</td></tr>
               ) : paginated.map(u => (
                 <tr key={u.id} style={{ borderBottom: "1px solid #f3f4f6" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   <td style={{ padding: "11px 14px", color: "#6b7280", fontWeight: 500 }}>{u.id}</td>
-                  <td style={{ padding: "11px 14px", color: "#111827", fontWeight: 500 }}>{u.nama}</td>
+                  <td style={{ padding: "11px 14px", color: "#111827", fontWeight: 500 }}>{u.name}</td>
                   <td style={{ padding: "11px 14px", color: "#6b7280" }}>{u.email}</td>
                   <td style={{ padding: "11px 14px", color: "#374151" }}>{u.emisi} kg CO₂</td>
                   <td style={{ padding: "11px 14px" }}>
-                    <span style={{
-                      padding: "3px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: 600,
-                      background: u.status === "Aktif" ? "#dcfce7" : "#fee2e2",
-                      color: u.status === "Aktif" ? "#14532d" : "#dc2626",
-                    }}>{u.status}</span>
-                  </td>
-                  <td style={{ padding: "11px 14px" }}>
                     <div style={{ display: "flex", gap: "6px" }}>
-                      {/* Detail */}
                       <button title="Detail" onClick={() => setModal({ type: "detail", user: u })}
                         style={{ width: "30px", height: "30px", borderRadius: "8px", border: "none", cursor: "pointer", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}
-                        onMouseEnter={e => e.currentTarget.style.background = "#2563eb"}
-                        onMouseLeave={e => e.currentTarget.style.background = "#eff6ff"}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#2563eb"; e.currentTarget.style.color = "#fff"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "#eff6ff"; e.currentTarget.style.color = "#2563eb"; }}
                       ><EyeIcon /></button>
-                      {/* Edit */}
                       <button title="Edit" onClick={() => setModal({ type: "edit", user: u })}
                         style={{ width: "30px", height: "30px", borderRadius: "8px", border: "none", cursor: "pointer", background: "#fefce8", color: "#ca8a04", display: "flex", alignItems: "center", justifyContent: "center" }}
-                        onMouseEnter={e => e.currentTarget.style.background = "#ca8a04"}
-                        onMouseLeave={e => e.currentTarget.style.background = "#fefce8"}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#ca8a04"; e.currentTarget.style.color = "#fff"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "#fefce8"; e.currentTarget.style.color = "#ca8a04"; }}
                       ><EditIcon /></button>
-                      {/* Hapus */}
                       <button title="Hapus" onClick={() => setModal({ type: "delete", user: u })}
                         style={{ width: "30px", height: "30px", borderRadius: "8px", border: "none", cursor: "pointer", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center" }}
-                        onMouseEnter={e => e.currentTarget.style.background = "#dc2626"}
-                        onMouseLeave={e => e.currentTarget.style.background = "#fee2e2"}
+                        onMouseEnter={e => { e.currentTarget.style.background = "#dc2626"; e.currentTarget.style.color = "#fff"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#dc2626"; }}
                       ><TrashIcon /></button>
                     </div>
                   </td>
@@ -447,11 +398,7 @@ const ManajemenUser = () => {
         {totalPages > 1 && (
           <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "16px" }}>
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-              style={{
-                width: "32px", height: "32px", borderRadius: "8px", border: "1.5px solid #e5e7eb",
-                background: "#fff", cursor: page === 1 ? "not-allowed" : "pointer", color: "#374151",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px",
-              }}>‹</button>
+              style={{ width: "32px", height: "32px", borderRadius: "8px", border: "1.5px solid #e5e7eb", background: "#fff", cursor: page === 1 ? "not-allowed" : "pointer", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>‹</button>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
               <button key={n} onClick={() => setPage(n)} style={{
                 width: "32px", height: "32px", borderRadius: "8px", border: "1.5px solid",
@@ -462,21 +409,20 @@ const ManajemenUser = () => {
               }}>{n}</button>
             ))}
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              style={{
-                width: "32px", height: "32px", borderRadius: "8px", border: "1.5px solid #e5e7eb",
-                background: "#fff", cursor: page === totalPages ? "not-allowed" : "pointer", color: "#374151",
-                display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px",
-              }}>›</button>
+              style={{ width: "32px", height: "32px", borderRadius: "8px", border: "1.5px solid #e5e7eb", background: "#fff", cursor: page === totalPages ? "not-allowed" : "pointer", color: "#374151", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>›</button>
           </div>
         )}
+
+        <div style={{ marginTop: "12px", fontSize: "12px", color: "#9ca3af" }}>
+          Menampilkan {paginated.length} dari {filtered.length} pengguna
+        </div>
       </div>
 
       {/* Modals */}
       {modal?.type === "detail" && <DetailModal user={modal.user} onClose={() => setModal(null)} />}
-      {modal?.type === "edit" && <FormModal user={modal.user} onClose={() => setModal(null)} onSave={handleSave} />}
-      {modal?.type === "tambah" && <FormModal user={null} onClose={() => setModal(null)} onSave={handleSave} />}
+      {modal?.type === "edit"   && <FormModal   user={modal.user} onClose={() => setModal(null)} onSave={fetchUsers} />}
       {modal?.type === "delete" && <DeleteModal user={modal.user} onClose={() => setModal(null)} onConfirm={handleDelete} />}
-      {modal?.type === "filter" && <FilterModal filter={filter} onClose={() => setModal(null)} onApply={f => { setFilter(f); setPage(1); }} />}
+      {modal?.type === "filter" && <FilterModal filter={filter}   onClose={() => setModal(null)} onApply={f => { setFilter(f); setPage(1); }} />}
     </div>
   );
 };
