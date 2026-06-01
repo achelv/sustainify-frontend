@@ -215,14 +215,21 @@ const Dashboard = () => {
           rumahTangga:  { value: totalR, aktivitas: rawR.length },
         });
 
-        // ── Weekly chart dari data real ──────────────────
-        const byDay = Array(7).fill(0);
-        [...mappedT, ...mappedR].forEach(item => {
-          const idx = (item._date.getDay() + 6) % 7;
-          byDay[idx] += item.emission;
-        });
-        const wData = HARI.map((day, i) => ({ day, value: parseFloat(byDay[i].toFixed(2)) }));
-        setWeeklyChartData(wData);
+        // ── Weekly chart - 7 hari terakhir ──────────────────
+            const now = new Date();
+            const sevenDaysAgo = new Date(now);
+            sevenDaysAgo.setDate(now.getDate() - 7);
+            sevenDaysAgo.setHours(0, 0, 0, 0);
+
+            const byDay = Array(7).fill(0);
+            [...mappedT, ...mappedR].forEach(item => {
+              if (item._date >= sevenDaysAgo) {
+                const idx = (item._date.getDay() + 6) % 7;
+                byDay[idx] += item.emission;
+              }
+            });
+            const wData = HARI.map((day, i) => ({ day, value: parseFloat(byDay[i].toFixed(2)) }));
+            setWeeklyChartData(wData);
 
         // ── Catatan otomatis ─────────────────────────────
         const totalEmisi = totalT + totalR;
