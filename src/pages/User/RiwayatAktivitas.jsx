@@ -4,20 +4,8 @@ import { DetailIcon, EditIcon, DeleteIcon, TransportIcon, HouseIcon } from "../.
 
 // ── Overlay ──────────────────────────────────────────────────
 const Overlay = ({ children, onClose }) => (
-  <div
-    onClick={onClose}
-    style={{
-      position: "fixed", inset: 0,
-      background: "rgba(0,0,0,0.38)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 9999,
-    }}
-  >
-    <div onClick={e => e.stopPropagation()} style={{
-      background: "#fff", borderRadius: "16px",
-      border: "1px solid #e5e7eb", padding: "24px",
-      width: "360px", maxWidth: "95%",
-    }}>
+  <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.38)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+    <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: "16px", border: "1px solid #e5e7eb", padding: "24px", width: "360px", maxWidth: "95%" }}>
       {children}
     </div>
   </div>
@@ -26,11 +14,7 @@ const Overlay = ({ children, onClose }) => (
 const ModalHeader = ({ icon, title, sub, onClose }) => (
   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-      <div style={{
-        width: "38px", height: "38px", borderRadius: "10px",
-        background: "#dcfce7", display: "flex", alignItems: "center",
-        justifyContent: "center", fontSize: "18px",
-      }}>{icon}</div>
+      <div style={{ width: "38px", height: "38px", borderRadius: "10px", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>{icon}</div>
       <div>
         <p style={{ fontSize: "14px", fontWeight: 700, color: "#111827", margin: 0 }}>{title}</p>
         <p style={{ fontSize: "11px", color: "#9ca3af", margin: 0 }}>{sub}</p>
@@ -45,9 +29,7 @@ const ModalDetail = ({ row, onClose }) => (
   <Overlay onClose={onClose}>
     <ModalHeader
       icon={row.kategori === "Transportasi" ? <TransportIcon /> : <HouseIcon />}
-      title="Detail aktivitas"
-      sub={row.id}
-      onClose={onClose}
+      title="Detail aktivitas" sub={row.id} onClose={onClose}
     />
     <div style={{ background: "#f9fafb", borderRadius: "10px", padding: "12px 16px", marginBottom: "16px" }}>
       {[
@@ -59,67 +41,136 @@ const ModalDetail = ({ row, onClose }) => (
         ["Jumlah",       row.jumlah],
         ["Emisi",        `${row.emisi.toFixed(2)} kg co₂`],
       ].map(([label, val], i, arr) => (
-        <div key={i} style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "7px 0",
-          borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none",
-        }}>
+        <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none" }}>
           <span style={{ fontSize: "12px", color: "#9ca3af" }}>{label}</span>
-          <span style={{
-            fontSize: i === arr.length - 1 ? "15px" : "13px",
-            fontWeight: i === arr.length - 1 ? 800 : 600,
-            color: i === arr.length - 1 ? "#166534" : "#111827",
-          }}>{val}</span>
+          <span style={{ fontSize: i === arr.length - 1 ? "15px" : "13px", fontWeight: i === arr.length - 1 ? 800 : 600, color: i === arr.length - 1 ? "#166534" : "#111827" }}>{val}</span>
         </div>
       ))}
     </div>
-    <button
-      onClick={onClose}
-      style={{ width: "100%", padding: "10px", borderRadius: "9px", background: "#166534", border: "none", color: "#fff", fontSize: "13px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}
-    >
+    <button onClick={onClose} style={{ width: "100%", padding: "10px", borderRadius: "9px", background: "#166534", border: "none", color: "#fff", fontSize: "13px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer" }}>
       Tutup
     </button>
   </Overlay>
 );
 
-// ── Modal Edit ───────────────────────────────────────────────
-const ModalEdit = ({ row, onSave, onClose }) => {
-  const [aktivitas, setAktivitas] = useState(row.aktivitas);
-  const [jumlah,    setJumlah]    = useState(row.jumlah);
-  const [kategori,  setKategori]  = useState(row.kategori);
+// ── Modal Edit Transportasi ───────────────────────────────────
+const ModalEditTransportasi = ({ row, onSave, onClose }) => {
+  const [kendaraanOptions, setKendaraanOptions] = useState([]);
+  const [kendaraanId,      setKendaraanId]      = useState(row.kendaraanId || "");
+  const [jarak,            setJarak]            = useState(row.jumlahRaw || "");
+  const [loading,          setLoading]          = useState(false);
+
+  useEffect(() => {
+    api.get("/kendaraan").then(res => {
+      const raw = Array.isArray(res.data) ? res.data : res.data.data ?? [];
+      setKendaraanOptions(raw);
+      if (!kendaraanId && raw.length > 0) setKendaraanId(String(raw[0].id));
+    });
+  }, []);
+
+  const handleSave = async () => {
+    if (!kendaraanId || !jarak || parseFloat(jarak) <= 0) return;
+    setLoading(true);
+    try {
+      await api.put(`/aktivitas/${row.apiId}`, {
+        kendaraan_id: kendaraanId,
+        jarak_km:     parseFloat(jarak),
+      });
+      onSave();
+      onClose();
+    } catch (err) {
+      console.error("Gagal edit transportasi:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Overlay onClose={onClose}>
-      <ModalHeader icon={<EditIcon size={18} />} title="Edit aktivitas" sub={row.id} onClose={onClose} />
+      <ModalHeader icon={<EditIcon size={18} />} title="Edit Transportasi" sub={row.id} onClose={onClose} />
       <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
-        {[
-          { label: "Tanggal", value: row.tanggal, disabled: true },
-          { label: "Waktu",   value: row.waktu,   disabled: true },
-        ].map(({ label, value }) => (
-          <div key={label}>
-            <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>{label}</label>
-            <input value={value} disabled style={{ ...inpStyle, background: "#f9fafb", color: "#9ca3af", cursor: "not-allowed" }} />
-          </div>
-        ))}
         <div>
-          <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Kategori</label>
-          <select value={kategori} onChange={e => setKategori(e.target.value)} style={inpStyle}>
-            <option>Transportasi</option>
-            <option>Rumah Tangga</option>
+          <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Kendaraan</label>
+          <select value={kendaraanId} onChange={e => setKendaraanId(e.target.value)} style={inpStyle}>
+            {kendaraanOptions.map(k => (
+              <option key={k.id} value={String(k.id)}>{k.nama_kendaraan}</option>
+            ))}
           </select>
         </div>
         <div>
-          <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Aktivitas</label>
-          <input value={aktivitas} onChange={e => setAktivitas(e.target.value)} style={inpStyle} />
-        </div>
-        <div>
-          <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Jumlah</label>
-          <input value={jumlah} onChange={e => setJumlah(e.target.value)} style={inpStyle} />
+          <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Jarak (km)</label>
+          <input type="number" min="0.1" value={jarak} onChange={e => setJarak(e.target.value)} style={inpStyle} />
         </div>
       </div>
       <div style={{ display: "flex", gap: "8px" }}>
         <button onClick={onClose} style={btnSecondary}>Batal</button>
-        <button onClick={() => onSave({ ...row, aktivitas, jumlah, kategori })} style={btnPrimary}>Simpan</button>
+        <button onClick={handleSave} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Menyimpan..." : "Simpan"}
+        </button>
+      </div>
+    </Overlay>
+  );
+};
+
+// ── Modal Edit Rumah Tangga ───────────────────────────────────
+const ModalEditRumahTangga = ({ row, onSave, onClose }) => {
+  const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
+  const rumahOptions = [
+    { value: "ac",         label: "Penggunaan AC" },
+    { value: "lampu",      label: "Lampu"         },
+    { value: "tv",         label: "TV"            },
+    { value: "kulkas",     label: "Kulkas"        },
+    { value: "ricecooker", label: "Rice Cooker"   },
+    { value: "kipas",      label: "Kipas Angin"   },
+  ];
+
+  const getKeyFromLabel = (label) => {
+    return Object.entries(labelMap).find(([, v]) => v === label)?.[0] || "ac";
+  };
+
+  const [jenisAktivitas, setJenisAktivitas] = useState(getKeyFromLabel(row.aktivitas));
+  const [durasi,         setDurasi]         = useState(row.jumlahRaw || "");
+  const [loading,        setLoading]        = useState(false);
+
+  const handleSave = async () => {
+    if (!jenisAktivitas || !durasi || parseFloat(durasi) <= 0) return;
+    setLoading(true);
+    try {
+      await api.put(`/rumah-tangga/${row.apiId}`, {
+        jenis_aktivitas: jenisAktivitas,
+        durasi_jam:      parseFloat(durasi),
+      });
+      onSave();
+      onClose();
+    } catch (err) {
+      console.error("Gagal edit rumah tangga:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Overlay onClose={onClose}>
+      <ModalHeader icon={<EditIcon size={18} />} title="Edit Rumah Tangga" sub={row.id} onClose={onClose} />
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "18px" }}>
+        <div>
+          <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Aktivitas</label>
+          <select value={jenisAktivitas} onChange={e => setJenisAktivitas(e.target.value)} style={inpStyle}>
+            {rumahOptions.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Durasi (jam)</label>
+          <input type="number" min="0.1" max="24" value={durasi} onChange={e => setDurasi(e.target.value)} style={inpStyle} />
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: "8px" }}>
+        <button onClick={onClose} style={btnSecondary}>Batal</button>
+        <button onClick={handleSave} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Menyimpan..." : "Simpan"}
+        </button>
       </div>
     </Overlay>
   );
@@ -129,20 +180,14 @@ const ModalEdit = ({ row, onSave, onClose }) => {
 const ModalHapus = ({ row, onConfirm, onClose }) => (
   <Overlay onClose={onClose}>
     <div style={{ textAlign: "center" }}>
-      <div style={{
-        width: "52px", height: "52px", borderRadius: "14px",
-        background: "#fef2f2", display: "flex", alignItems: "center",
-        justifyContent: "center", margin: "0 auto 14px",
-      }}>
+      <div style={{ width: "52px", height: "52px", borderRadius: "14px", background: "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
         <DeleteIcon />
       </div>
       <p style={{ fontSize: "15px", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>Hapus aktivitas?</p>
       <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>
         Aktivitas <strong>{row.aktivitas}</strong> ({row.id})
       </p>
-      <p style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "22px" }}>
-        Data yang dihapus tidak dapat dikembalikan.
-      </p>
+      <p style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "22px" }}>Data yang dihapus tidak dapat dikembalikan.</p>
       <div style={{ display: "flex", gap: "8px" }}>
         <button onClick={onClose}   style={btnSecondary}>Batal</button>
         <button onClick={onConfirm} style={{ ...btnPrimary, background: "#dc2626" }}>Hapus</button>
@@ -160,60 +205,28 @@ const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
   const handleOpen = () => {
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
-      setPos({
-        top:   rect.bottom + window.scrollY + 4,
-        right: window.innerWidth - rect.right,
-      });
+      setPos({ top: rect.bottom + window.scrollY + 4, right: window.innerWidth - rect.right });
     }
     setOpen(v => !v);
   };
 
   return (
     <div style={{ position: "relative" }}>
-      <button
-        ref={btnRef}
-        onClick={handleOpen}
-        style={{
-          width: "30px", height: "30px", borderRadius: "7px",
-          background: "#f9fafb", border: "1px solid #e5e7eb",
-          cursor: "pointer", fontSize: "17px", color: "#6b7280",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}
-      >⋮</button>
-
+      <button ref={btnRef} onClick={handleOpen} style={{ width: "30px", height: "30px", borderRadius: "7px", background: "#f9fafb", border: "1px solid #e5e7eb", cursor: "pointer", fontSize: "17px", color: "#6b7280", display: "flex", alignItems: "center", justifyContent: "center" }}>⋮</button>
       {open && (
         <>
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 90 }} />
-          <div style={{
-            position: "fixed",
-            top:   pos.top,
-            right: pos.right,
-            background: "#fff", border: "1px solid #e5e7eb",
-            borderRadius: "10px", zIndex: 100,
-            minWidth: "130px", padding: "4px 0",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.10)",
-          }}>
+          <div style={{ position: "fixed", top: pos.top, right: pos.right, background: "#fff", border: "1px solid #e5e7eb", borderRadius: "10px", zIndex: 100, minWidth: "130px", padding: "4px 0", boxShadow: "0 4px 16px rgba(0,0,0,0.10)" }}>
             {[
               { icon: <DetailIcon />, label: "Detail", color: "#166534", action: onDetail },
               { icon: <EditIcon />,   label: "Edit",   color: "#166534", action: onEdit   },
               { icon: <DeleteIcon />, label: "Hapus",  color: "#dc2626", action: onHapus  },
             ].map(({ icon, label, color, action }) => (
-              <button
-                key={label}
-                onClick={() => { setOpen(false); action(); }}
-                style={{
-                  width: "100%", padding: "8px 14px",
-                  border: "none", background: "none",
-                  textAlign: "left", fontSize: "13px", color,
-                  cursor: "pointer", display: "flex",
-                  alignItems: "center", gap: "8px",
-                  fontFamily: "inherit",
-                }}
+              <button key={label} onClick={() => { setOpen(false); action(); }}
+                style={{ width: "100%", padding: "8px 14px", border: "none", background: "none", textAlign: "left", fontSize: "13px", color, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", fontFamily: "inherit" }}
                 onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
                 onMouseLeave={e => e.currentTarget.style.background = "none"}
-              >
-                <span>{icon}</span>{label}
-              </button>
+              ><span>{icon}</span>{label}</button>
             ))}
           </div>
         </>
@@ -229,11 +242,7 @@ const KategoriBadge = ({ kat }) => {
     "Rumah Tangga": { background: "#fdf4ff", color: "#7e22ce", border: "1px solid #e9d5ff" },
   };
   return (
-    <span style={{
-      fontSize: "11px", fontWeight: 600, padding: "3px 10px",
-      borderRadius: "20px", whiteSpace: "nowrap",
-      ...(map[kat] || { background: "#f3f4f6", color: "#6b7280" }),
-    }}>
+    <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", whiteSpace: "nowrap", ...(map[kat] || { background: "#f3f4f6", color: "#6b7280" }) }}>
       {kat}
     </span>
   );
@@ -253,37 +262,41 @@ const RiwayatAktivitas = () => {
       setLoading(true);
       const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
 
-      const resT = await api.get("/aktivitas");
+      const resT   = await api.get("/aktivitas");
       const mappedT = (resT.data.data ?? []).map((item) => {
         const date = new Date(item.tanggal);
         return {
-          id:       `ACT${String(item.id).padStart(3, "0")}`,
-          apiId:    item.id,
+          id:          `ACT${String(item.id).padStart(3, "0")}`,
+          apiId:       item.id,
+          kendaraanId: String(item.kendaraan_id),
           kategoriApi: "transportasi",
-          tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-          waktu:    new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
-          aktivitas: item.kendaraan?.nama_kendaraan || "-",
-          kategori: "Transportasi",
-          jumlah:   `${item.jarak_km} km`,
-          emisi:    parseFloat(item.emisi_karbon),
-          _date:    date,
+          tanggal:     date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+          waktu:       new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+          aktivitas:   item.kendaraan?.nama_kendaraan || "-",
+          kategori:    "Transportasi",
+          jumlah:      `${item.jarak_km} km`,
+          jumlahRaw:   item.jarak_km,
+          emisi:       parseFloat(item.emisi_karbon),
+          _date:       date,
         };
       });
 
-      const resR = await api.get("/rumah-tangga");
+      const resR   = await api.get("/rumah-tangga");
       const mappedR = (resR.data.data ?? []).map((item) => {
         const date = new Date(item.tanggal);
         return {
-          id:       `RT${String(item.id).padStart(3, "0")}`,
-          apiId:    item.id,
+          id:          `RT${String(item.id).padStart(3, "0")}`,
+          apiId:       item.id,
+          jenisAktivitas: item.jenis_aktivitas,
           kategoriApi: "rumah-tangga",
-          tanggal:  date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-          waktu:    new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
-          aktivitas: labelMap[item.jenis_aktivitas] || item.jenis_aktivitas,
-          kategori: "Rumah Tangga",
-          jumlah:   `${item.durasi_jam} jam`,
-          emisi:    parseFloat(item.emisi_karbon),
-          _date:    date,
+          tanggal:     date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+          waktu:       new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+          aktivitas:   labelMap[item.jenis_aktivitas] || item.jenis_aktivitas,
+          kategori:    "Rumah Tangga",
+          jumlah:      `${item.durasi_jam} jam`,
+          jumlahRaw:   item.durasi_jam,
+          emisi:       parseFloat(item.emisi_karbon),
+          _date:       date,
         };
       });
 
@@ -302,18 +315,10 @@ const RiwayatAktivitas = () => {
   useEffect(() => { fetchData(); }, []);
 
   const filtered = data.filter(row => {
-    const matchSearch =
-      row.aktivitas.toLowerCase().includes(search.toLowerCase()) ||
-      row.id.toLowerCase().includes(search.toLowerCase());
-    const matchKategori =
-      filterKategori === "Semua" || row.kategori === filterKategori;
+    const matchSearch   = row.aktivitas.toLowerCase().includes(search.toLowerCase()) || row.id.toLowerCase().includes(search.toLowerCase());
+    const matchKategori = filterKategori === "Semua" || row.kategori === filterKategori;
     return matchSearch && matchKategori;
   });
-
-  const handleSaveEdit = (updated) => {
-    setData(prev => prev.map(r => r.id === updated.id ? updated : r));
-    setModal(null);
-  };
 
   const handleHapus = async (row) => {
     try {
@@ -331,45 +336,27 @@ const RiwayatAktivitas = () => {
 
   const kategoriOptions = ["Semua", "Transportasi", "Rumah Tangga"];
 
-  const thStyle = {
-    padding: "12px 16px", textAlign: "center",
-    fontSize: "13px", fontWeight: 700,
-    color: "#166534", whiteSpace: "nowrap",
-  };
-  const tdStyle = {
-    padding: "13px 16px", fontSize: "13px",
-    color: "#374151", textAlign: "center",
-  };
+  const thStyle = { padding: "12px 16px", textAlign: "center", fontSize: "13px", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" };
+  const tdStyle = { padding: "13px 16px", fontSize: "13px", color: "#374151", textAlign: "center" };
 
   return (
     <div style={{ width: "100%", padding: "0 8px" }}>
-      <div style={{
-        background: "#fff", borderRadius: "16px",
-        boxShadow: "0 1px 4px rgba(0,0,0,0.07)",
-        border: "1px solid #f3f4f6", padding: "28px",
-      }}>
+      <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f3f4f6", padding: "28px" }}>
 
         {/* Header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
           <h3 style={{ fontSize: "20px", fontWeight: 800, color: "#111827" }}>Riwayat Aktivitas</h3>
           <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
             <div style={{ position: "relative" }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
                 <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
               </svg>
-              <input
-                type="text" placeholder="Cari aktivitas..."
-                value={search} onChange={e => setSearch(e.target.value)}
-                style={{ padding: "9px 16px 9px 36px", borderRadius: "10px", border: "1.5px solid #d1fae5", background: "#fff", fontSize: "13px", fontFamily: "inherit", color: "#374151", outline: "none", width: "200px" }}
-              />
+              <input type="text" placeholder="Cari aktivitas..." value={search} onChange={e => setSearch(e.target.value)}
+                style={{ padding: "9px 16px 9px 36px", borderRadius: "10px", border: "1.5px solid #d1fae5", background: "#fff", fontSize: "13px", fontFamily: "inherit", color: "#374151", outline: "none", width: "200px" }} />
             </div>
-
             <div style={{ position: "relative" }}>
-              <button
-                onClick={() => setShowFilter(p => !p)}
-                style={{ padding: "9px 16px", borderRadius: "10px", border: "1.5px solid #d1fae5", background: filterKategori !== "Semua" ? "#f0fdf4" : "#fff", color: "#166534", fontSize: "13px", fontWeight: 600, fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px" }}
-              >
+              <button onClick={() => setShowFilter(p => !p)}
+                style={{ padding: "9px 16px", borderRadius: "10px", border: "1.5px solid #d1fae5", background: filterKategori !== "Semua" ? "#f0fdf4" : "#fff", color: "#166534", fontSize: "13px", fontWeight: 600, fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: "7px" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/>
                 </svg>
@@ -378,17 +365,13 @@ const RiwayatAktivitas = () => {
                   <polyline points="6 9 12 15 18 9"/>
                 </svg>
               </button>
-
               {showFilter && (
                 <>
                   <div onClick={() => setShowFilter(false)} style={{ position: "fixed", inset: 0, zIndex: 80 }} />
                   <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: "#fff", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "6px", zIndex: 100, minWidth: "160px", boxShadow: "0 4px 16px rgba(0,0,0,0.08)" }}>
                     {kategoriOptions.map(opt => (
-                      <button
-                        key={opt}
-                        onClick={() => { setFilterKategori(opt); setShowFilter(false); }}
-                        style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", padding: "9px 12px", border: "none", borderRadius: "8px", background: filterKategori === opt ? "#f0fdf4" : "transparent", color: filterKategori === opt ? "#166534" : "#374151", fontSize: "13px", fontWeight: filterKategori === opt ? 700 : 400, fontFamily: "inherit", cursor: "pointer", textAlign: "left" }}
-                      >
+                      <button key={opt} onClick={() => { setFilterKategori(opt); setShowFilter(false); }}
+                        style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", padding: "9px 12px", border: "none", borderRadius: "8px", background: filterKategori === opt ? "#f0fdf4" : "transparent", color: filterKategori === opt ? "#166534" : "#374151", fontSize: "13px", fontWeight: filterKategori === opt ? 700 : 400, fontFamily: "inherit", cursor: "pointer", textAlign: "left" }}>
                         {opt}
                       </button>
                     ))}
@@ -399,14 +382,12 @@ const RiwayatAktivitas = () => {
           </div>
         </div>
 
-        {/* Filter badge aktif */}
+        {/* Filter badge */}
         {filterKategori !== "Semua" && (
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
             <span style={{ fontSize: "12px", color: "#6b7280" }}>Filter aktif:</span>
             <KategoriBadge kat={filterKategori} />
-            <button onClick={() => setFilterKategori("Semua")} style={{ fontSize: "11px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-              ✕ Hapus filter
-            </button>
+            <button onClick={() => setFilterKategori("Semua")} style={{ fontSize: "11px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>✕ Hapus filter</button>
           </div>
         )}
 
@@ -424,47 +405,37 @@ const RiwayatAktivitas = () => {
               {loading ? (
                 <tr><td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>Memuat data...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>
-                    Tidak ada data ditemukan
+                <tr><td colSpan={9} style={{ padding: "40px", textAlign: "center", color: "#9ca3af", fontSize: "14px" }}>Tidak ada data ditemukan</td></tr>
+              ) : filtered.map((row, i) => (
+                <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+                  onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <td style={{ ...tdStyle, color: "#9ca3af" }}>{row.no}.</td>
+                  <td style={{ ...tdStyle, fontSize: "11px", color: "#9ca3af" }}>{row.id}</td>
+                  <td style={tdStyle}>{row.tanggal}</td>
+                  <td style={tdStyle}>{row.waktu}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: "#111827" }}>{row.aktivitas}</td>
+                  <td style={tdStyle}><KategoriBadge kat={row.kategori} /></td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>{row.jumlah}</td>
+                  <td style={tdStyle}>
+                    <span style={{ fontSize: "14px", fontWeight: 800, color: "#166534" }}>{row.emisi.toFixed(2)}</span>
+                    <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "2px" }}>kg co₂</span>
+                  </td>
+                  <td style={tdStyle}>
+                    <div style={{ display: "flex", justifyContent: "center" }}>
+                      <AksiMenu
+                        onDetail={() => setModal({ mode: "detail", row })}
+                        onEdit={()   => setModal({ mode: "edit",   row })}
+                        onHapus={()  => setModal({ mode: "hapus",  row })}
+                      />
+                    </div>
                   </td>
                 </tr>
-              ) : (
-                filtered.map((row, i) => (
-                  <tr
-                    key={i}
-                    style={{ borderBottom: "1px solid #f3f4f6" }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  >
-                    <td style={{ ...tdStyle, color: "#9ca3af" }}>{row.no}.</td>
-                    <td style={{ ...tdStyle, fontSize: "11px", color: "#9ca3af" }}>{row.id}</td>
-                    <td style={tdStyle}>{row.tanggal}</td>
-                    <td style={tdStyle}>{row.waktu}</td>
-                    <td style={{ ...tdStyle, fontWeight: 600, color: "#111827" }}>{row.aktivitas}</td>
-                    <td style={tdStyle}><KategoriBadge kat={row.kategori} /></td>
-                    <td style={{ ...tdStyle, fontWeight: 600 }}>{row.jumlah}</td>
-                    <td style={tdStyle}>
-                      <span style={{ fontSize: "14px", fontWeight: 800, color: "#166534" }}>{row.emisi.toFixed(2)}</span>
-                      <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "2px" }}>kg co₂</span>
-                    </td>
-                    <td style={tdStyle}>
-                      <div style={{ display: "flex", justifyContent: "center" }}>
-                        <AksiMenu
-                          onDetail={() => setModal({ mode: "detail", row })}
-                          onEdit={()   => setModal({ mode: "edit",   row })}
-                          onHapus={()  => setModal({ mode: "hapus",  row })}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
 
-        {/* Footer */}
         <div style={{ marginTop: "16px", fontSize: "12px", color: "#9ca3af" }}>
           Menampilkan {filtered.length} dari {data.length} data
         </div>
@@ -474,8 +445,11 @@ const RiwayatAktivitas = () => {
       {modal?.mode === "detail" && (
         <ModalDetail row={modal.row} onClose={() => setModal(null)} />
       )}
-      {modal?.mode === "edit" && (
-        <ModalEdit row={modal.row} onSave={handleSaveEdit} onClose={() => setModal(null)} />
+      {modal?.mode === "edit" && modal.row.kategoriApi === "transportasi" && (
+        <ModalEditTransportasi row={modal.row} onSave={fetchData} onClose={() => setModal(null)} />
+      )}
+      {modal?.mode === "edit" && modal.row.kategoriApi === "rumah-tangga" && (
+        <ModalEditRumahTangga row={modal.row} onSave={fetchData} onClose={() => setModal(null)} />
       )}
       {modal?.mode === "hapus" && (
         <ModalHapus row={modal.row} onConfirm={() => handleHapus(modal.row)} onClose={() => setModal(null)} />
