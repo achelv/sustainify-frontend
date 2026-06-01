@@ -4,12 +4,26 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   BarChart, Bar, CartesianGrid,
 } from "recharts";
+import {
+  AcIcon, LampuIcon, TvIcon, KulkasIcon, RiceCookerIcon, KipasIcon,
+  PlugIcon, WarningIcon, StarIcon, LeafIcon, CO2Icon,
+} from "../../components/icons/Icon";
 
 // ── Helpers ──────────────────────────────────────────────────
 const HARI = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 const labelMap = { ac: "AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
 const batasNormal = { ac: 6*7, lampu: 12*7, tv: 5*7, kulkas: 24*7, ricecooker: 4*7, kipas: 8*7 };
-const applianceIcon = { ac: "❄️", lampu: "💡", tv: "📺", kulkas: "🧊", ricecooker: "🍚", kipas: "💨" };
+const getApplianceIcon = (key) => {
+  const map = {
+    ac:         <AcIcon />,
+    lampu:      <LampuIcon />,
+    tv:         <TvIcon />,
+    kulkas:     <KulkasIcon />,
+    ricecooker: <RiceCookerIcon />,
+    kipas:      <KipasIcon />,
+  };
+  return map[key] ?? <PlugIcon />;
+};
 
 const rekomendasi = [
   "Atur timer AC maksimal 6 jam/hari untuk menghemat energi.",
@@ -220,7 +234,7 @@ const EcoMingguan = () => {
           const batas  = batasNormal[key] || 999;
           const status = jam > batas ? "Melebihi" : "Normal";
           return {
-            icon:   applianceIcon[key] || "🔌",
+            icon: getApplianceIcon(key),
             name:   labelMap[key] || key,
             sub:    `Batasan normal: ${batas / 7} jam/hari`,
             hours:  jam,
@@ -291,10 +305,7 @@ const EcoMingguan = () => {
         <Card>
           <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
             <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "#e8f5e9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg viewBox="0 0 40 40" width="36" height="36">
-                <circle cx="20" cy="20" r="20" fill="#e8f5e9" />
-                <text x="20" y="26" textAnchor="middle" fontSize="11" fontWeight="700" fill="#14532d" fontFamily="serif">CO₂</text>
-              </svg>
+              <CO2Icon /> 
             </div>
             <div>
               <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "2px" }}>Total Emisi</div>
@@ -305,7 +316,6 @@ const EcoMingguan = () => {
             </div>
           </div>
           <div style={{ marginTop: "14px", padding: "8px 12px", borderRadius: "10px", background: "#f0fdf4", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "16px" }}>📊</span>
             <span style={{ fontSize: "12px", color: "#16a34a", fontWeight: 600 }}>Data minggu ini</span>
           </div>
         </Card>

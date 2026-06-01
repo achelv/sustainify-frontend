@@ -1,5 +1,7 @@
 const iconStyle = (style) => ({ width: "20px", height: "20px", ...style });
 
+// ── Existing icons ────────────────────────────────────────────
+
 export const HomeIcon = ({ style }) => (
   <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="currentColor">
     <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
@@ -172,14 +174,81 @@ export const MenuIcon = () => (
 );
 
 export const LockClosedIcon = ({ style }) => (
-  <svg
-    style={{ width: "20px", height: "20px", ...style }}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
+  <svg style={{ width: "20px", height: "20px", ...style }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <rect x="5" y="11" width="14" height="10" rx="2" />
     <path d="M8 11V7a4 4 0 0 1 8 0v4" strokeLinecap="round" />
+  </svg>
+);
+
+// ── Appliance icons (EcoMingguan) ─────────────────────────────
+
+export const AcIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="12" y1="2" x2="12" y2="22" />
+    <line x1="2" y1="12" x2="22" y2="12" />
+    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+    <line x1="19.07" y1="4.93" x2="4.93" y2="19.07" />
+    <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const LampuIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21h6M12 3a6 6 0 0 1 4.24 10.24C15.5 14 15 15 15 16H9c0-1-.5-2-1.24-2.76A6 6 0 0 1 12 3Z" />
+    <line x1="9" y1="19" x2="15" y2="19" />
+  </svg>
+);
+
+export const TvIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="3" width="20" height="14" rx="2" />
+    <path d="M8 21h8M12 17v4" />
+  </svg>
+);
+
+export const KulkasIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="5" y="2" width="14" height="20" rx="2" />
+    <line x1="5" y1="10" x2="19" y2="10" />
+    <line x1="9" y1="6" x2="9" y2="8" />
+    <line x1="9" y1="13" x2="9" y2="17" />
+  </svg>
+);
+
+export const RiceCookerIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 11a8 8 0 0 1 16 0v2H4v-2Z" />
+    <path d="M2 13h20v2a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-2Z" />
+    <path d="M12 17v3M9 2c0 2 1 3 3 3s3-1 3-3" />
+  </svg>
+);
+
+export const KipasIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 12c-1-2.5 0-5 2-6.5a5 5 0 0 1 1 9.5" />
+    <path d="M12 12c2.5-1 5 0 6.5 2a5 5 0 0 1-9.5 1" />
+    <path d="M12 12c1 2.5 0 5-2 6.5a5 5 0 0 1-1-9.5" />
+    <path d="M12 12c-2.5 1-5 0-6.5-2a5 5 0 0 1 9.5-1" />
+    <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const PlugIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22v-5M9 8V2M15 8V2M9 8h6a4 4 0 0 1 0 8H9a4 4 0 0 1 0-8Z" />
+  </svg>
+);
+
+export const WarningIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+    <line x1="12" y1="9" x2="12" y2="13" />
+    <circle cx="12" cy="17" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const StarIcon = ({ style }) => (
+  <svg style={iconStyle(style)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
   </svg>
 );
