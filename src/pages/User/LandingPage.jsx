@@ -20,59 +20,20 @@ const lineData = [
   { name: "Okt", val: 50 }, { name: "Nov", val: 42 }, { name: "Des", val: 55 },
 ];
 
-
-const transportOptions = [
-  { value: "motor",   label: "Motor",         factor: 0.072 },
-  { value: "mobil",   label: "Mobil Pribadi", factor: 0.210 },
-  { value: "bus",     label: "Bus",           factor: 0.089 },
-  { value: "kereta",  label: "Kereta",        factor: 0.041 },
-  { value: "pesawat", label: "Pesawat",       factor: 0.255 },
-  { value: "sepeda",  label: "Sepeda",        factor: 0.000 },
-];
-
-const rumahOptions = [
-  { value: "ac",         label: "AC",          factor: 0.9  },
-  { value: "lampu",      label: "Lampu",       factor: 0.04 },
-  { value: "tv",         label: "TV",          factor: 0.1  },
-  { value: "kulkas",     label: "Kulkas",      factor: 0.25 },
-  { value: "ricecooker", label: "Rice Cooker", factor: 0.3  },
-  { value: "kipas",      label: "Kipas Angin", factor: 0.05 },
-];
+const labelMap = {
+  ac: "Penggunaan AC", lampu: "Lampu", tv: "TV",
+  kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin",
+};
 
 const features = [
-  {
-    icon: "calculator",
-    title: "Hitung Emisi Karbon",
-    desc: "Hitung emisi karbon dari aktivitas harian secara mudah dan cepat.",
-    dark: true,
-  },
-  {
-    icon: "monitor",
-    title: "Data Statistik",
-    desc: "Lihat data statistik dari rekapan mingguan hingga bulanan secara lebih detail.",
-    dark: false,
-  },
-  {
-    icon: "trending-up",
-    title: "Forecasting",
-    desc: "Prediksi emisi karbon berdasarkan aktivitas dan penggunaan energi.",
-    dark: false,
-  },
-  {
-    icon: "bell",
-    title: "Batas Pemakaian",
-    desc: "Ketahui aktivitas yang melebihi batas penggunaan normal.",
-    dark: true,
-  },
-  {
-    icon: "leaf",
-    title: "Saran",
-    desc: "Dapatkan saran untuk mengurangi emisi karbon.",
-    dark: false,
-  },
+  { icon: "calculator", title: "Hitung Emisi Karbon",  desc: "Hitung emisi karbon dari aktivitas harian secara mudah dan cepat.", dark: true },
+  { icon: "monitor",    title: "Data Statistik",       desc: "Lihat data statistik dari rekapan mingguan hingga bulanan secara lebih detail.", dark: false },
+  { icon: "trending-up",title: "Forecasting",          desc: "Prediksi emisi karbon berdasarkan aktivitas dan penggunaan energi.", dark: false },
+  { icon: "bell",       title: "Batas Pemakaian",      desc: "Ketahui aktivitas yang melebihi batas penggunaan normal.", dark: true },
+  { icon: "leaf",       title: "Saran",                desc: "Dapatkan saran untuk mengurangi emisi karbon.", dark: false },
 ];
 
-/* ── ICONS (from Icon.jsx) ── */
+/* ── ICONS ── */
 const iconSz = (size) => ({ width: size, height: size });
 
 const LeafIcon = ({ size = 20, color = "currentColor" }) => (
@@ -107,7 +68,7 @@ const CalculatorIconSvg = ({ size = 22 }) => (
     <circle cx="16" cy="14" r="1" fill="currentColor" />
     <circle cx="16" cy="18" r="1" fill="currentColor" />
     <circle cx="12" cy="18" r="1" fill="currentColor" />
-    <circle cx="8" cy="18" r="1" fill="currentColor" />
+    <circle cx="8"  cy="18" r="1" fill="currentColor" />
   </svg>
 );
 
@@ -125,13 +86,11 @@ const BellIconSvg = ({ size = 22 }) => (
   </svg>
 );
 
-// Map feature icon keys to components
 const FeatureIcon = ({ type, size = 22 }) => {
   if (type === "calculator") return <CalculatorIconSvg size={size} />;
   if (type === "monitor")    return <MonitorIconSvg size={size} />;
   if (type === "bell")       return <BellIconSvg size={size} />;
   if (type === "leaf")       return <LeafIcon size={size} />;
-  // trending-up fallback
   return (
     <svg style={iconSz(size)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
@@ -142,16 +101,17 @@ const FeatureIcon = ({ type, size = 22 }) => {
 
 /* ── LOGO ── */
 const Logo = ({ light = false }) => (
-    <div>
-      <div style={{ fontFamily: "Poppins,sans-serif", fontWeight: 800, fontSize: "1.05rem", color: light ? "#fff" : "#1a5c30", lineHeight: 1.15 }}>Sustainify</div>
-      <div style={{ fontFamily: "Poppins,sans-serif", fontSize: "0.6rem", color: light ? "#b7f5c8" : "#2e8b57", fontWeight: 500, lineHeight: 1 }}>Langkah kecil, dampak besar</div>
-    </div>
+  <div>
+    <div style={{ fontFamily: "Poppins,sans-serif", fontWeight: 800, fontSize: "1.05rem", color: light ? "#fff" : "#1a5c30", lineHeight: 1.15 }}>Sustainify</div>
+    <div style={{ fontFamily: "Poppins,sans-serif", fontSize: "0.6rem", color: light ? "#b7f5c8" : "#2e8b57", fontWeight: 500, lineHeight: 1 }}>Langkah kecil, dampak besar</div>
+  </div>
 );
 
 /* ── NAVBAR ── */
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open,     setOpen]     = useState(false);
+
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 10);
     window.addEventListener("scroll", fn);
@@ -177,28 +137,20 @@ const Navbar = () => {
       }}>
         <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 1.5rem", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <Logo />
-          {/* Desktop */}
           <div className="lp-nav-desk" style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
             {[
-              { label: "Beranda",  href: "#hero" },
-              { label: "Fitur",    href: "#fitur" },
-              { label: "Login",    href: "/login" },
-              { label: "Daftar",   href: "/register" },
+              { label: "Beranda", href: "#hero"      },
+              { label: "Fitur",   href: "#fitur"     },
+              { label: "Login",   href: "/login"     },
+              { label: "Daftar",  href: "/register"  },
             ].map(({ label, href }) => (
               <a key={label} href={href}
                 onClick={href.startsWith("#") ? (e) => scrollTo(href.slice(1), e) : undefined}
-                style={{
-                  fontFamily: "Poppins,sans-serif", fontSize: "0.9rem", fontWeight: 600,
-                  color: "#1a5c30", textDecoration: "none",
-                  position: "relative", paddingBottom: "3px",
-                }}
+                style={{ fontFamily: "Poppins,sans-serif", fontSize: "0.9rem", fontWeight: 600, color: "#1a5c30", textDecoration: "none", position: "relative", paddingBottom: "3px" }}
                 className="lp-nav-link"
-              >
-                {label}
-              </a>
+              >{label}</a>
             ))}
           </div>
-          {/* Hamburger */}
           <button className="lp-nav-ham" onClick={() => setOpen(o => !o)} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", gap: 5, padding: 4 }}>
             {[0, 1, 2].map(i => (
               <span key={i} style={{
@@ -211,9 +163,9 @@ const Navbar = () => {
         {open && (
           <div className="lp-nav-mob" style={{ background: "#fff", borderTop: "1px solid #d1fae5", padding: "1rem 1.5rem 1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
             {[
-              { label: "Beranda", href: "#hero" },
-              { label: "Fitur",   href: "#fitur" },
-              { label: "Login",   href: "/login" },
+              { label: "Beranda", href: "#hero"     },
+              { label: "Fitur",   href: "#fitur"    },
+              { label: "Login",   href: "/login"    },
               { label: "Daftar",  href: "/register" },
             ].map(({ label, href }) => (
               <a key={label} href={href}
@@ -224,21 +176,11 @@ const Navbar = () => {
           </div>
         )}
       </nav>
-
       <style>{`
         @media(min-width:640px){.lp-nav-ham{display:none!important}.lp-nav-mob{display:none!important}}
         @media(max-width:639px){.lp-nav-desk{display:none!important}}
-
-        .lp-nav-link::after {
-          content: '';
-          position: absolute;
-          bottom: 0; left: 0;
-          width: 0; height: 2px;
-          background: #1a5c30;
-          border-radius: 2px;
-          transition: width .25s ease;
-        }
-        .lp-nav-link:hover::after { width: 100%; }
+        .lp-nav-link::after{content:'';position:absolute;bottom:0;left:0;width:0;height:2px;background:#1a5c30;border-radius:2px;transition:width .25s ease;}
+        .lp-nav-link:hover::after{width:100%;}
       `}</style>
     </>
   );
@@ -248,6 +190,7 @@ const Navbar = () => {
 const Hero = () => {
   const [show, setShow] = useState(false);
   useEffect(() => { const t = setTimeout(() => setShow(true), 60); return () => clearTimeout(t); }, []);
+
   return (
     <section id="hero" style={{
       background: "linear-gradient(135deg,#f0fdf4 0%,#e8f5e9 100%)",
@@ -259,7 +202,6 @@ const Hero = () => {
       <div style={{ position: "absolute", bottom: -60, left: -70, width: 220, height: 220, borderRadius: "50%", background: "rgba(26,92,48,0.04)", pointerEvents: "none" }} />
 
       <div style={{ maxWidth: 1100, margin: "0 auto", width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "3rem", alignItems: "center" }} className="lp-hero-grid">
-        {/* Left */}
         <div style={{ opacity: show ? 1 : 0, transform: show ? "none" : "translateY(28px)", transition: "all .7s cubic-bezier(.4,0,.2,1)" }}>
           <h1 style={{ fontFamily: "Poppins,sans-serif", fontSize: "clamp(2.1rem,5vw,3rem)", fontWeight: 800, color: "#1a5c30", lineHeight: 1.15, marginBottom: "1rem", letterSpacing: "-0.5px" }}>
             Hitung Emisimu,<br />
@@ -282,7 +224,6 @@ const Hero = () => {
           </a>
         </div>
 
-        {/* Right — Chart */}
         <div className="lp-hero-chart" style={{ opacity: show ? 1 : 0, transform: show ? "none" : "translateY(32px) scale(0.97)", transition: "all .8s .15s cubic-bezier(.4,0,.2,1)" }}>
           <div style={{ background: "#fff", borderRadius: 20, padding: "1.5rem", boxShadow: "0 8px 40px rgba(26,92,48,0.13)", border: "1px solid #e8f5e9" }}>
             <div style={{ fontFamily: "Poppins,sans-serif", fontSize: "0.72rem", color: "#9ca3af", fontWeight: 600, marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.5px" }}>Jumlah Emisi CO₂</div>
@@ -294,13 +235,10 @@ const Hero = () => {
                 <Line type="monotone" dataKey="val" stroke="#1a5c30" strokeWidth={2.5} dot={{ fill: "#fff", stroke: "#1a5c30", strokeWidth: 2, r: 3 }} activeDot={{ r: 5, fill: "#1a5c30" }} />
               </LineChart>
             </ResponsiveContainer>
-
           </div>
         </div>
       </div>
-      <style>{`
-        @media(max-width:768px){.lp-hero-grid{grid-template-columns:1fr!important}.lp-hero-chart{display:none!important}}
-      `}</style>
+      <style>{`@media(max-width:768px){.lp-hero-grid{grid-template-columns:1fr!important}.lp-hero-chart{display:none!important}}`}</style>
     </section>
   );
 };
@@ -327,12 +265,9 @@ const Features = () => {
             Solusi pintar untuk membantu memahami, memantau, dan mengurangi jejak karbon dalam aktivitas sehari-hari.
           </p>
         </div>
-
-        {/* Row 1 — 3 cards */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "1rem", marginBottom: "1rem" }} className="lp-feat-r1">
           {features.slice(0, 3).map((f, i) => <FeatureCard key={i} f={f} i={i} vis={vis} />)}
         </div>
-        {/* Row 2 — 2 cards centered / justified */}
         <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }} className="lp-feat-r2">
           {features.slice(3).map((f, i) => (
             <div key={i + 3} style={{ flex: "0 1 calc(33.333% - 0.67rem)", minWidth: 220 }}>
@@ -343,8 +278,7 @@ const Features = () => {
       </div>
       <style>{`
         @media(max-width:900px){.lp-feat-r1{grid-template-columns:repeat(2,1fr)!important}.lp-feat-r2{flex-wrap:wrap!important}}
-        @media(max-width:900px) .lp-feat-r2 > div{flex:0 1 calc(50% - 0.5rem)!important}
-        @media(max-width:540px){.lp-feat-r1{grid-template-columns:1fr!important}.lp-feat-r2{flex-direction:column!important}.lp-feat-r2 > div{flex:unset!important;min-width:unset!important}}
+        @media(max-width:540px){.lp-feat-r1{grid-template-columns:1fr!important}.lp-feat-r2{flex-direction:column!important}.lp-feat-r2>div{flex:unset!important;min-width:unset!important}}
       `}</style>
     </section>
   );
@@ -373,30 +307,59 @@ const FeatureCard = ({ f, i, vis, fullHeight }) => (
 
 /* ── CALCULATOR ── */
 const Calculator = () => {
-  const [tab, setTab] = useState("transportasi");
-  const [transport, setTransport] = useState("");
-  const [jarak, setJarak] = useState("");
-  const [aktivitas, setAktivitas] = useState("");
-  const [durasi, setDurasi] = useState("");
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [used, setUsed] = useState(false);  // true setelah sekali hitung
+  const [tab,              setTab]              = useState("transportasi");
+  const [transport,        setTransport]        = useState("");
+  const [jarak,            setJarak]            = useState("");
+  const [aktivitas,        setAktivitas]        = useState("");
+  const [durasi,           setDurasi]           = useState("");
+  const [result,           setResult]           = useState(null);
+  const [loading,          setLoading]          = useState(false);
+  const [used,             setUsed]             = useState(false);
+  const [transportOptions, setTransportOptions] = useState([]);
+  const [rumahOptions,     setRumahOptions]     = useState([]);
+
+  useEffect(() => {
+    // Fetch kendaraan dari API
+    fetch("http://127.0.0.1:8000/api/kendaraan")
+      .then(res => res.json())
+      .then(data => {
+        const raw = Array.isArray(data) ? data : data.data ?? [];
+        setTransportOptions(raw.map(k => ({
+          value:  String(k.id),
+          label:  k.nama_kendaraan,
+          factor: parseFloat(k.faktor_emisi),
+        })));
+      })
+      .catch(err => console.error("Gagal fetch kendaraan:", err));
+
+    // Fetch rumah tangga dari API
+    fetch("http://127.0.0.1:8000/api/rumah-tangga-list")
+      .then(res => res.json())
+      .then(data => {
+        const raw = data.data ?? [];
+        setRumahOptions(raw.map(r => ({
+          value:  r.nama_aktivitas,
+          label:  labelMap[r.nama_aktivitas] || r.nama_aktivitas,
+          factor: parseFloat(r.faktor_emisi),
+        })));
+      })
+      .catch(err => console.error("Gagal fetch rumah tangga:", err));
+  }, []);
 
   const switchTab = (t) => { setTab(t); setResult(null); setTransport(""); setJarak(""); setAktivitas(""); setDurasi(""); };
 
   const hitung = () => {
     setLoading(true);
     setTimeout(() => {
-      let emission = 0;
       if (tab === "transportasi") {
         const opt = transportOptions.find(t => t.value === transport);
         if (!opt || !jarak || isNaN(parseFloat(jarak))) { setLoading(false); return; }
-        emission = parseFloat((opt.factor * parseFloat(jarak)).toFixed(3));
+        const emission = parseFloat((opt.factor * parseFloat(jarak)).toFixed(3));
         setResult({ emission, label: opt.label, detail: `${jarak} km` });
       } else {
         const opt = rumahOptions.find(r => r.value === aktivitas);
         if (!opt || !durasi || isNaN(parseFloat(durasi))) { setLoading(false); return; }
-        emission = parseFloat((opt.factor * parseFloat(durasi)).toFixed(3));
+        const emission = parseFloat((opt.factor * parseFloat(durasi)).toFixed(3));
         setResult({ emission, label: opt.label, detail: `${durasi} jam` });
       }
       setUsed(true);
@@ -406,9 +369,9 @@ const Calculator = () => {
 
   const level = result
     ? result.emission === 0 ? { text: "Nol Emisi 🌿", color: "#16a34a", bg: "#f0fdf4" }
-      : result.emission < 1 ? { text: "Rendah 🌱", color: "#16a34a", bg: "#f0fdf4" }
-        : result.emission < 5 ? { text: "Sedang ⚠️", color: "#d97706", bg: "#fffbeb" }
-          : { text: "Tinggi 🔥", color: "#dc2626", bg: "#fef2f2" }
+      : result.emission < 1 ? { text: "Rendah 🌱",    color: "#16a34a", bg: "#f0fdf4" }
+        : result.emission < 5 ? { text: "Sedang ⚠️",  color: "#d97706", bg: "#fffbeb" }
+          : { text: "Tinggi 🔥",                       color: "#dc2626", bg: "#fef2f2" }
     : null;
 
   const canHitung = !used && (tab === "transportasi" ? (transport && jarak) : (aktivitas && durasi));
@@ -456,14 +419,13 @@ const Calculator = () => {
             </p>
 
             {/* Tab switcher */}
-            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.25rem", background: "rgba(0,0,0,0.15)", borderRadius: 10, padding: "4px", position: "relative" }}>
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.25rem", background: "rgba(0,0,0,0.15)", borderRadius: 10, padding: "4px" }}>
               {[
-                { key: "transportasi", label: <span style={{display:"flex",alignItems:"center",gap:"0.35rem"}}><CarIconSvg size={16}/>Transportasi</span> },
-                { key: "rumah_tangga", label: <span style={{display:"flex",alignItems:"center",gap:"0.35rem"}}><HouseIconSvg size={16}/>Rumah Tangga</span> },
+                { key: "transportasi", label: <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}><CarIconSvg size={16} />Transportasi</span> },
+                { key: "rumah_tangga", label: <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}><HouseIconSvg size={16} />Rumah Tangga</span> },
               ].map(t => (
                 <button key={t.key} onClick={() => switchTab(t.key)} style={{
-                  flex: 1, padding: "0.55rem 0.5rem",
-                  borderRadius: 8, border: "none",
+                  flex: 1, padding: "0.55rem 0.5rem", borderRadius: 8, border: "none",
                   background: tab === t.key ? "#fff" : "transparent",
                   color: tab === t.key ? "#1a5c30" : "#d1fae5",
                   fontFamily: "Poppins,sans-serif", fontWeight: 700, fontSize: "0.82rem",
@@ -475,12 +437,10 @@ const Calculator = () => {
 
             {/* White card */}
             <div style={{ background: "#fff", borderRadius: 14, padding: "1.25rem 1.25rem 1rem", position: "relative" }}>
-              {/* Locked overlay */}
               {used && (
                 <div style={{
                   position: "absolute", inset: 0, borderRadius: 14, zIndex: 10,
                   background: "rgba(255,255,255,0.55)", backdropFilter: "blur(3px)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
                   pointerEvents: "none",
                 }} />
               )}
@@ -539,35 +499,25 @@ const Calculator = () => {
               )}
             </div>
 
-            {/* CTA after used */}
             {used ? (
-              <div style={{ marginTop: "1.1rem", background: "rgba(0,0,0,0.18)", borderRadius: 12, padding: "1rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem", animation: "lp-fu .4s ease", position: "relative" }}>
+              <div style={{ marginTop: "1.1rem", background: "rgba(0,0,0,0.18)", borderRadius: 12, padding: "1rem 1.25rem", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem", animation: "lp-fu .4s ease" }}>
                 <div>
                   <div style={{ fontFamily: "Poppins,sans-serif", fontWeight: 700, fontSize: "0.85rem", color: "#fff" }}>Mau hitung lebih banyak?</div>
                   <div style={{ fontFamily: "Poppins,sans-serif", fontSize: "0.77rem", color: "#b7f5c8", marginTop: 2 }}>Daftar untuk akses penuh tanpa batas.</div>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <a href="/login" style={{
-                    padding: "0.5rem 1rem", borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.4)",
-                    color: "#fff", fontFamily: "Poppins,sans-serif", fontWeight: 600, fontSize: "0.8rem",
-                    textDecoration: "none", transition: "all .2s",
-                  }}
+                  <a href="/login" style={{ padding: "0.5rem 1rem", borderRadius: 8, border: "1.5px solid rgba(255,255,255,0.4)", color: "#fff", fontFamily: "Poppins,sans-serif", fontWeight: 600, fontSize: "0.8rem", textDecoration: "none" }}
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                   >Login</a>
-                  <a href="/register" style={{
-                    padding: "0.5rem 1rem", borderRadius: 8, border: "none",
-                    background: "#fff", color: "#1a5c30",
-                    fontFamily: "Poppins,sans-serif", fontWeight: 700, fontSize: "0.8rem",
-                    textDecoration: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", transition: "all .2s",
-                  }}
+                  <a href="/register" style={{ padding: "0.5rem 1rem", borderRadius: 8, border: "none", background: "#fff", color: "#1a5c30", fontFamily: "Poppins,sans-serif", fontWeight: 700, fontSize: "0.8rem", textDecoration: "none", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 4px 14px rgba(0,0,0,0.2)"; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.15)"; }}
                   >Daftar →</a>
                 </div>
               </div>
             ) : (
-              <p style={{ fontFamily: "Poppins,sans-serif", textAlign: "center", color: "#b7f5c8", fontSize: "0.82rem", marginTop: "1.1rem", fontWeight: 500, position: "relative" }}>
+              <p style={{ fontFamily: "Poppins,sans-serif", textAlign: "center", color: "#b7f5c8", fontSize: "0.82rem", marginTop: "1.1rem", fontWeight: 500 }}>
                 Ayo mulai aktivitas anda sekarang!
               </p>
             )}
@@ -624,7 +574,7 @@ const Footer = () => (
       <Logo light />
       <div style={{ display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ fontFamily: "Poppins,sans-serif", color: "#2d6a4f", fontSize: "0.75rem" }}>© 2024 Sustainify. All rights reserved.</span>
-        <span style={{ fontFamily: "Poppins,sans-serif", color: "#2d6a4f", fontSize: "0.75rem" }}>Made with leaf for the planet</span>
+        <span style={{ fontFamily: "Poppins,sans-serif", color: "#2d6a4f", fontSize: "0.75rem" }}>Made with 🌱 for the planet</span>
       </div>
     </div>
   </footer>
