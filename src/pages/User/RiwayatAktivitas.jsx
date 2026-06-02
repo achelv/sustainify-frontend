@@ -20,7 +20,7 @@ const ModalHeader = ({ icon, title, sub, onClose }) => (
         <p style={{ fontSize: "11px", color: "#9ca3af", margin: 0 }}>{sub}</p>
       </div>
     </div>
-    <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "#9ca3af", lineHeight: 1, padding: 0 }}>×</button>
+    <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "20px", color: "#9ca3af", lineHeight: 1, padding: 0 }}>x</button>
   </div>
 );
 
@@ -39,7 +39,7 @@ const ModalDetail = ({ row, onClose }) => (
         ["Aktivitas",    row.aktivitas],
         ["Kategori",     row.kategori],
         ["Jumlah",       row.jumlah],
-        ["Emisi",        `${row.emisi.toFixed(2)} kg co₂`],
+        ["Emisi",        `${row.emisi.toFixed(2)} kg co2`],
       ].map(([label, val], i, arr) => (
         <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 0", borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none" }}>
           <span style={{ fontSize: "12px", color: "#9ca3af" }}>{label}</span>
@@ -72,17 +72,10 @@ const ModalEditTransportasi = ({ row, onSave, onClose }) => {
     if (!kendaraanId || !jarak || parseFloat(jarak) <= 0) return;
     setLoading(true);
     try {
-      await api.put(`/aktivitas/${row.apiId}`, {
-        kendaraan_id: kendaraanId,
-        jarak_km:     parseFloat(jarak),
-      });
-      onSave();
-      onClose();
-    } catch (err) {
-      console.error("Gagal edit transportasi:", err);
-    } finally {
-      setLoading(false);
-    }
+      await api.put(`/aktivitas/${row.apiId}`, { kendaraan_id: kendaraanId, jarak_km: parseFloat(jarak) });
+      onSave(); onClose();
+    } catch (err) { console.error("Gagal edit transportasi:", err); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -92,9 +85,7 @@ const ModalEditTransportasi = ({ row, onSave, onClose }) => {
         <div>
           <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Kendaraan</label>
           <select value={kendaraanId} onChange={e => setKendaraanId(e.target.value)} style={inpStyle}>
-            {kendaraanOptions.map(k => (
-              <option key={k.id} value={String(k.id)}>{k.nama_kendaraan}</option>
-            ))}
+            {kendaraanOptions.map(k => <option key={k.id} value={String(k.id)}>{k.nama_kendaraan}</option>)}
           </select>
         </div>
         <div>
@@ -116,18 +107,11 @@ const ModalEditTransportasi = ({ row, onSave, onClose }) => {
 const ModalEditRumahTangga = ({ row, onSave, onClose }) => {
   const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
   const rumahOptions = [
-    { value: "ac",         label: "Penggunaan AC" },
-    { value: "lampu",      label: "Lampu"         },
-    { value: "tv",         label: "TV"            },
-    { value: "kulkas",     label: "Kulkas"        },
-    { value: "ricecooker", label: "Rice Cooker"   },
-    { value: "kipas",      label: "Kipas Angin"   },
+    { value: "ac", label: "Penggunaan AC" }, { value: "lampu", label: "Lampu" },
+    { value: "tv", label: "TV" }, { value: "kulkas", label: "Kulkas" },
+    { value: "ricecooker", label: "Rice Cooker" }, { value: "kipas", label: "Kipas Angin" },
   ];
-
-  const getKeyFromLabel = (label) => {
-    return Object.entries(labelMap).find(([, v]) => v === label)?.[0] || "ac";
-  };
-
+  const getKeyFromLabel = (label) => Object.entries(labelMap).find(([, v]) => v === label)?.[0] || "ac";
   const [jenisAktivitas, setJenisAktivitas] = useState(getKeyFromLabel(row.aktivitas));
   const [durasi,         setDurasi]         = useState(row.jumlahRaw || "");
   const [loading,        setLoading]        = useState(false);
@@ -136,17 +120,10 @@ const ModalEditRumahTangga = ({ row, onSave, onClose }) => {
     if (!jenisAktivitas || !durasi || parseFloat(durasi) <= 0) return;
     setLoading(true);
     try {
-      await api.put(`/rumah-tangga/${row.apiId}`, {
-        jenis_aktivitas: jenisAktivitas,
-        durasi_jam:      parseFloat(durasi),
-      });
-      onSave();
-      onClose();
-    } catch (err) {
-      console.error("Gagal edit rumah tangga:", err);
-    } finally {
-      setLoading(false);
-    }
+      await api.put(`/rumah-tangga/${row.apiId}`, { jenis_aktivitas: jenisAktivitas, durasi_jam: parseFloat(durasi) });
+      onSave(); onClose();
+    } catch (err) { console.error("Gagal edit rumah tangga:", err); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -156,9 +133,7 @@ const ModalEditRumahTangga = ({ row, onSave, onClose }) => {
         <div>
           <label style={{ fontSize: "12px", color: "#9ca3af", display: "block", marginBottom: "5px" }}>Aktivitas</label>
           <select value={jenisAktivitas} onChange={e => setJenisAktivitas(e.target.value)} style={inpStyle}>
-            {rumahOptions.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
+            {rumahOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
         <div>
@@ -184,24 +159,21 @@ const ModalHapus = ({ row, onConfirm, onClose }) => (
         <DeleteIcon />
       </div>
       <p style={{ fontSize: "15px", fontWeight: 700, color: "#111827", marginBottom: "6px" }}>Hapus aktivitas?</p>
-      <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>
-        Aktivitas <strong>{row.aktivitas}</strong> ({row.id})
-      </p>
+      <p style={{ fontSize: "13px", color: "#6b7280", marginBottom: "6px" }}>Aktivitas <strong>{row.aktivitas}</strong> ({row.id})</p>
       <p style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "22px" }}>Data yang dihapus tidak dapat dikembalikan.</p>
       <div style={{ display: "flex", gap: "8px" }}>
-        <button onClick={onClose}   style={btnSecondary}>Batal</button>
+        <button onClick={onClose} style={btnSecondary}>Batal</button>
         <button onClick={onConfirm} style={{ ...btnPrimary, background: "#dc2626" }}>Hapus</button>
       </div>
     </div>
   </Overlay>
 );
 
-// ── Dropdown aksi ⋮ ─────────────────────────────────────────
+// ── Dropdown aksi ─────────────────────────────────────────────
 const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
   const [open, setOpen] = useState(false);
   const [pos,  setPos]  = useState({ top: 0, right: 0 });
   const btnRef = React.useRef(null);
-
   const handleOpen = () => {
     if (btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect();
@@ -209,7 +181,6 @@ const AksiMenu = ({ onDetail, onEdit, onHapus }) => {
     }
     setOpen(v => !v);
   };
-
   return (
     <div style={{ position: "relative" }}>
       <button ref={btnRef} onClick={handleOpen} style={{ width: "30px", height: "30px", borderRadius: "7px", background: "#f9fafb", border: "1px solid #e5e7eb", cursor: "pointer", fontSize: "17px", color: "#6b7280", display: "flex", alignItems: "center", justifyContent: "center" }}>⋮</button>
@@ -257,59 +228,60 @@ const RiwayatAktivitas = () => {
   const [loading,        setLoading]        = useState(true);
   const [modal,          setModal]          = useState(null);
 
+  // ── State Laporan ─────────────────────────────────────────
+  const [laporan,        setLaporan]        = useState({ transportasi: null, rumahTangga: null, ringkasan: null });
+  const [loadingLaporan, setLoadingLaporan] = useState(false);
+  const [showLaporan,    setShowLaporan]    = useState(false);
+
+  const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
+
   const fetchData = async () => {
     try {
       setLoading(true);
-      const labelMap = { ac: "Penggunaan AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
-
-      const resT   = await api.get("/aktivitas");
+      const resT    = await api.get("/aktivitas");
       const mappedT = (resT.data.data ?? []).map((item) => {
         const date = new Date(item.tanggal);
         return {
-          id:          `ACT${String(item.id).padStart(3, "0")}`,
-          apiId:       item.id,
-          kendaraanId: String(item.kendaraan_id),
-          kategoriApi: "transportasi",
-          tanggal:     date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-          waktu:       new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
-          aktivitas:   item.kendaraan?.nama_kendaraan || "-",
-          kategori:    "Transportasi",
-          jumlah:      `${item.jarak_km} km`,
-          jumlahRaw:   item.jarak_km,
-          emisi:       parseFloat(item.emisi_karbon),
-          _date:       date,
+          id: `ACT${String(item.id).padStart(3, "0")}`, apiId: item.id,
+          kendaraanId: String(item.kendaraan_id), kategoriApi: "transportasi",
+          tanggal: date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+          waktu: new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+          aktivitas: item.kendaraan?.nama_kendaraan || "-", kategori: "Transportasi",
+          jumlah: `${item.jarak_km} km`, jumlahRaw: item.jarak_km,
+          emisi: parseFloat(item.emisi_karbon), _date: date,
         };
       });
-
-      const resR   = await api.get("/rumah-tangga");
+      const resR    = await api.get("/rumah-tangga");
       const mappedR = (resR.data.data ?? []).map((item) => {
         const date = new Date(item.tanggal);
         return {
-          id:          `RT${String(item.id).padStart(3, "0")}`,
-          apiId:       item.id,
-          jenisAktivitas: item.jenis_aktivitas,
-          kategoriApi: "rumah-tangga",
-          tanggal:     date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
-          waktu:       new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
-          aktivitas:   labelMap[item.jenis_aktivitas] || item.jenis_aktivitas,
-          kategori:    "Rumah Tangga",
-          jumlah:      `${item.durasi_jam} jam`,
-          jumlahRaw:   item.durasi_jam,
-          emisi:       parseFloat(item.emisi_karbon),
-          _date:       date,
+          id: `RT${String(item.id).padStart(3, "0")}`, apiId: item.id,
+          jenisAktivitas: item.jenis_aktivitas, kategoriApi: "rumah-tangga",
+          tanggal: date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
+          waktu: new Date(item.tanggal).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
+          aktivitas: labelMap[item.jenis_aktivitas] || item.jenis_aktivitas, kategori: "Rumah Tangga",
+          jumlah: `${item.durasi_jam} jam`, jumlahRaw: item.durasi_jam,
+          emisi: parseFloat(item.emisi_karbon), _date: date,
         };
       });
+      setData([...mappedT, ...mappedR].sort((a, b) => b._date - a._date).map((r, i) => ({ ...r, no: i + 1 })));
+    } catch (err) { console.error("Gagal fetch data:", err); }
+    finally { setLoading(false); }
+  };
 
-      const combined = [...mappedT, ...mappedR]
-        .sort((a, b) => b._date - a._date)
-        .map((r, i) => ({ ...r, no: i + 1 }));
-
-      setData(combined);
-    } catch (err) {
-      console.error("Gagal fetch data:", err);
-    } finally {
-      setLoading(false);
-    }
+  // ── Fetch Laporan ─────────────────────────────────────────
+  const fetchLaporan = async () => {
+    setLoadingLaporan(true);
+    try {
+      const [resT, resR, resRing] = await Promise.all([
+        api.get("/laporan/transportasi"),
+        api.get("/laporan/rumah-tangga"),
+        api.get("/laporan/ringkasan"),
+      ]);
+      setLaporan({ transportasi: resT.data, rumahTangga: resR.data, ringkasan: resRing.data });
+      setShowLaporan(true);
+    } catch (err) { console.error("Gagal fetch laporan:", err); }
+    finally { setLoadingLaporan(false); }
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -322,22 +294,18 @@ const RiwayatAktivitas = () => {
 
   const handleHapus = async (row) => {
     try {
-      if (row.kategoriApi === "transportasi") {
-        await api.delete(`/aktivitas/${row.apiId}`);
-      } else {
-        await api.delete(`/rumah-tangga/${row.apiId}`);
-      }
+      if (row.kategoriApi === "transportasi") await api.delete(`/aktivitas/${row.apiId}`);
+      else await api.delete(`/rumah-tangga/${row.apiId}`);
       await fetchData();
-    } catch (err) {
-      console.error("Gagal hapus:", err);
-    }
+    } catch (err) { console.error("Gagal hapus:", err); }
     setModal(null);
   };
 
   const kategoriOptions = ["Semua", "Transportasi", "Rumah Tangga"];
-
-  const thStyle = { padding: "12px 16px", textAlign: "center", fontSize: "13px", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" };
-  const tdStyle = { padding: "13px 16px", fontSize: "13px", color: "#374151", textAlign: "center" };
+  const thStyle  = { padding: "12px 16px", textAlign: "center", fontSize: "13px", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" };
+  const tdStyle  = { padding: "13px 16px", fontSize: "13px", color: "#374151", textAlign: "center" };
+  const thLStyle = { padding: "10px 14px", fontSize: "12px", fontWeight: 700, color: "#166534", textAlign: "center", whiteSpace: "nowrap" };
+  const tdLStyle = { padding: "12px 14px", textAlign: "center", fontSize: "13px", color: "#374151" };
 
   return (
     <div style={{ width: "100%", padding: "0 8px" }}>
@@ -387,7 +355,7 @@ const RiwayatAktivitas = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
             <span style={{ fontSize: "12px", color: "#6b7280" }}>Filter aktif:</span>
             <KategoriBadge kat={filterKategori} />
-            <button onClick={() => setFilterKategori("Semua")} style={{ fontSize: "11px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>✕ Hapus filter</button>
+            <button onClick={() => setFilterKategori("Semua")} style={{ fontSize: "11px", color: "#dc2626", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", padding: 0 }}>x Hapus filter</button>
           </div>
         )}
 
@@ -419,7 +387,7 @@ const RiwayatAktivitas = () => {
                   <td style={{ ...tdStyle, fontWeight: 600 }}>{row.jumlah}</td>
                   <td style={tdStyle}>
                     <span style={{ fontSize: "14px", fontWeight: 800, color: "#166534" }}>{row.emisi.toFixed(2)}</span>
-                    <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "2px" }}>kg co₂</span>
+                    <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "2px" }}>kg co2</span>
                   </td>
                   <td style={tdStyle}>
                     <div style={{ display: "flex", justifyContent: "center" }}>
@@ -435,25 +403,178 @@ const RiwayatAktivitas = () => {
             </tbody>
           </table>
         </div>
-
         <div style={{ marginTop: "16px", fontSize: "12px", color: "#9ca3af" }}>
           Menampilkan {filtered.length} dari {data.length} data
         </div>
       </div>
 
+      {/* ── Tombol Laporan ── */}
+      <div style={{ marginTop: "20px", display: "flex", justifyContent: "flex-end" }}>
+        <button onClick={fetchLaporan} disabled={loadingLaporan}
+          style={{ padding: "10px 22px", borderRadius: "10px", background: loadingLaporan ? "#d1fae5" : "#166534", border: "none", color: "#fff", fontSize: "13px", fontWeight: 700, fontFamily: "inherit", cursor: loadingLaporan ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+          {loadingLaporan ? "Memuat laporan..." : "Tampilkan Laporan Emisi"}
+        </button>
+      </div>
+
+      {/* ── Section Laporan ── */}
+      {showLaporan && laporan.ringkasan && (
+        <div style={{ marginTop: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+
+          {/* Ringkasan Gabungan */}
+          <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f3f4f6", padding: "24px" }}>
+            <h4 style={{ fontSize: "16px", fontWeight: 800, color: "#111827", marginBottom: "4px" }}>Ringkasan Emisi Karbon</h4>
+            <p style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "16px" }}>Perbandingan total emisi transportasi vs rumah tangga (UNION + Subquery)</p>
+            <div style={{ background: "#f0fdf4", borderRadius: "12px", padding: "14px 18px", marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: "13px", color: "#166534", fontWeight: 600 }}>Total Emisi Karbon Keseluruhan</span>
+              <span style={{ fontSize: "20px", fontWeight: 800, color: "#166534" }}>{laporan.ringkasan.total_gabungan} <span style={{ fontSize: "12px", fontWeight: 400 }}>kg CO2</span></span>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #f0fdf4" }}>
+                    {["Kategori", "Total Aktivitas", "Total Emisi", "Rata-rata/Aktivitas", "Maks", "Min"].map(h => <th key={h} style={thLStyle}>{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {laporan.ringkasan.data.map((row, i) => (
+                    <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                      <td style={tdLStyle}>
+                        <span style={{ fontSize: "12px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px",
+                          background: row.kategori === "Transportasi" ? "#eff6ff" : "#fdf4ff",
+                          color: row.kategori === "Transportasi" ? "#1d4ed8" : "#7e22ce",
+                          border: `1px solid ${row.kategori === "Transportasi" ? "#bfdbfe" : "#e9d5ff"}` }}>
+                          {row.kategori}
+                        </span>
+                      </td>
+                      <td style={{ ...tdLStyle, fontWeight: 700, color: "#111827" }}>{row.total_aktivitas}x</td>
+                      <td style={tdLStyle}><span style={{ fontSize: "15px", fontWeight: 800, color: "#166534" }}>{row.total_emisi}</span> <span style={{ fontSize: "10px", color: "#9ca3af" }}>kg CO2</span></td>
+                      <td style={tdLStyle}>{row.rata_emisi} kg</td>
+                      <td style={{ ...tdLStyle, color: "#dc2626", fontWeight: 600 }}>{row.maks_emisi} kg</td>
+                      <td style={{ ...tdLStyle, color: "#16a34a", fontWeight: 600 }}>{row.min_emisi} kg</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Laporan Transportasi */}
+          {laporan.transportasi && (
+            <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f3f4f6", padding: "24px" }}>
+              <h4 style={{ fontSize: "16px", fontWeight: 800, color: "#111827", marginBottom: "4px" }}>Laporan Emisi Transportasi</h4>
+              <p style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "12px" }}>JOIN kendaraan + GROUP BY jenis kendaraan + HAVING rata-rata emisi &gt;= rata-rata keseluruhan</p>
+              <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+                <div style={{ background: "#eff6ff", borderRadius: "8px", padding: "8px 14px" }}>
+                  <span style={{ fontSize: "11px", color: "#1d4ed8" }}>Rata-rata/trip: </span>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#1d4ed8" }}>{laporan.transportasi.rata_rata_keseluruhan} kg CO2</span>
+                </div>
+                <div style={{ background: "#f0fdf4", borderRadius: "8px", padding: "8px 14px" }}>
+                  <span style={{ fontSize: "11px", color: "#166534" }}>Total: </span>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#166534" }}>{laporan.transportasi.total_emisi_transportasi} kg CO2</span>
+                </div>
+              </div>
+              {laporan.transportasi.data.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "13px", padding: "20px 0" }}>Belum ada data yang memenuhi kriteria HAVING</p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid #f0fdf4" }}>
+                        {["Kendaraan", "Jumlah Trip", "Total Jarak", "Total Emisi", "Rata-rata/Trip", "Emisi Tertinggi"].map(h => <th key={h} style={thLStyle}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {laporan.transportasi.data.map((row, i) => (
+                        <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+                          onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                          <td style={{ ...tdLStyle, fontWeight: 700, color: "#111827" }}>{row.nama_kendaraan}</td>
+                          <td style={tdLStyle}>{row.jumlah_trip}x</td>
+                          <td style={tdLStyle}>{row.total_jarak} km</td>
+                          <td style={tdLStyle}><span style={{ fontSize: "15px", fontWeight: 800, color: "#166534" }}>{row.total_emisi}</span> <span style={{ fontSize: "10px", color: "#9ca3af" }}>kg CO2</span></td>
+                          <td style={tdLStyle}>{row.rata_emisi} kg</td>
+                          <td style={{ ...tdLStyle, color: "#dc2626", fontWeight: 600 }}>{row.maks_emisi} kg</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p style={{ fontSize: "11px", color: "#9ca3af", marginTop: "10px" }}>* {laporan.transportasi.keterangan}</p>
+            </div>
+          )}
+
+          {/* Laporan Rumah Tangga */}
+          {laporan.rumahTangga && (
+            <div style={{ background: "#fff", borderRadius: "16px", boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #f3f4f6", padding: "24px" }}>
+              <h4 style={{ fontSize: "16px", fontWeight: 800, color: "#111827", marginBottom: "4px" }}>Laporan Emisi Rumah Tangga</h4>
+              <p style={{ fontSize: "12px", color: "#9ca3af", marginBottom: "12px" }}>JOIN rumah_tangga + GROUP BY jenis aktivitas + HAVING frekuensi &gt;= 2 + Subquery persentase kontribusi</p>
+              <div style={{ display: "flex", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+                <div style={{ background: "#fdf4ff", borderRadius: "8px", padding: "8px 14px" }}>
+                  <span style={{ fontSize: "11px", color: "#7e22ce" }}>Rata-rata/aktivitas: </span>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#7e22ce" }}>{laporan.rumahTangga.rata_rata_keseluruhan} kg CO2</span>
+                </div>
+                <div style={{ background: "#f0fdf4", borderRadius: "8px", padding: "8px 14px" }}>
+                  <span style={{ fontSize: "11px", color: "#166534" }}>Total: </span>
+                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#166534" }}>{laporan.rumahTangga.total_emisi_rumah_tangga} kg CO2</span>
+                </div>
+              </div>
+              {laporan.rumahTangga.data.length === 0 ? (
+                <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "13px", padding: "20px 0" }}>Belum ada aktivitas yang dilakukan minimal 2 kali</p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid #f0fdf4" }}>
+                        {["Aktivitas", "Frekuensi", "Total Durasi", "Total Emisi", "Kontribusi", "Faktor Emisi", "Status"].map(h => <th key={h} style={thLStyle}>{h}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {laporan.rumahTangga.data.map((row, i) => {
+                        const isHigh = row.rata_emisi > laporan.rumahTangga.rata_rata_keseluruhan;
+                        return (
+                          <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
+                            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                            <td style={{ ...tdLStyle, fontWeight: 700, color: "#111827" }}>{labelMap[row.jenis_aktivitas] || row.jenis_aktivitas}</td>
+                            <td style={tdLStyle}>{row.frekuensi}x</td>
+                            <td style={tdLStyle}>{row.total_durasi} jam</td>
+                            <td style={tdLStyle}><span style={{ fontSize: "15px", fontWeight: 800, color: "#166534" }}>{row.total_emisi}</span> <span style={{ fontSize: "10px", color: "#9ca3af" }}>kg CO2</span></td>
+                            <td style={tdLStyle}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                                <div style={{ width: "60px", height: "6px", borderRadius: "3px", background: "#f3f4f6", overflow: "hidden" }}>
+                                  <div style={{ width: `${Math.min(row.persen_kontribusi, 100)}%`, height: "100%", background: "#166534", borderRadius: "3px" }} />
+                                </div>
+                                <span style={{ fontSize: "12px", fontWeight: 600, color: "#374151" }}>{row.persen_kontribusi}%</span>
+                              </div>
+                            </td>
+                            <td style={{ ...tdLStyle, color: "#6b7280" }}>{row.faktor_emisi} kg/jam</td>
+                            <td style={tdLStyle}>
+                              <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 8px", borderRadius: "20px",
+                                background: isHigh ? "#fef2f2" : "#f0fdf4",
+                                color: isHigh ? "#dc2626" : "#166534",
+                                border: `1px solid ${isHigh ? "#fecaca" : "#bbf7d0"}` }}>
+                                {isHigh ? "Tinggi" : "Normal"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p style={{ fontSize: "11px", color: "#9ca3af", marginTop: "10px" }}>* {laporan.rumahTangga.keterangan}</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Modals */}
-      {modal?.mode === "detail" && (
-        <ModalDetail row={modal.row} onClose={() => setModal(null)} />
-      )}
-      {modal?.mode === "edit" && modal.row.kategoriApi === "transportasi" && (
-        <ModalEditTransportasi row={modal.row} onSave={fetchData} onClose={() => setModal(null)} />
-      )}
-      {modal?.mode === "edit" && modal.row.kategoriApi === "rumah-tangga" && (
-        <ModalEditRumahTangga row={modal.row} onSave={fetchData} onClose={() => setModal(null)} />
-      )}
-      {modal?.mode === "hapus" && (
-        <ModalHapus row={modal.row} onConfirm={() => handleHapus(modal.row)} onClose={() => setModal(null)} />
-      )}
+      {modal?.mode === "detail" && <ModalDetail row={modal.row} onClose={() => setModal(null)} />}
+      {modal?.mode === "edit" && modal.row.kategoriApi === "transportasi" && <ModalEditTransportasi row={modal.row} onSave={fetchData} onClose={() => setModal(null)} />}
+      {modal?.mode === "edit" && modal.row.kategoriApi === "rumah-tangga" && <ModalEditRumahTangga row={modal.row} onSave={fetchData} onClose={() => setModal(null)} />}
+      {modal?.mode === "hapus" && <ModalHapus row={modal.row} onConfirm={() => handleHapus(modal.row)} onClose={() => setModal(null)} />}
     </div>
   );
 };
@@ -461,18 +582,6 @@ const RiwayatAktivitas = () => {
 export default RiwayatAktivitas;
 
 // ── Shared styles ────────────────────────────────────────────
-const inpStyle = {
-  width: "100%", padding: "9px 11px", borderRadius: "8px",
-  border: "1px solid #e5e7eb", background: "#fff",
-  color: "#111827", fontSize: "13px", fontFamily: "inherit",
-};
-const btnPrimary = {
-  flex: 1, padding: "10px", borderRadius: "9px",
-  background: "#166534", border: "none", color: "#fff",
-  fontSize: "13px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer",
-};
-const btnSecondary = {
-  flex: 1, padding: "10px", borderRadius: "9px",
-  background: "#f9fafb", border: "1px solid #e5e7eb",
-  color: "#6b7280", fontSize: "13px", fontFamily: "inherit", cursor: "pointer",
-};
+const inpStyle = { width: "100%", padding: "9px 11px", borderRadius: "8px", border: "1px solid #e5e7eb", background: "#fff", color: "#111827", fontSize: "13px", fontFamily: "inherit" };
+const btnPrimary = { flex: 1, padding: "10px", borderRadius: "9px", background: "#166534", border: "none", color: "#fff", fontSize: "13px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer" };
+const btnSecondary = { flex: 1, padding: "10px", borderRadius: "9px", background: "#f9fafb", border: "1px solid #e5e7eb", color: "#6b7280", fontSize: "13px", fontFamily: "inherit", cursor: "pointer" };
