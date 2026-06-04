@@ -6,7 +6,8 @@ const api = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  withCredentials: true,
+  // ✅ Hapus withCredentials jika pakai Bearer token
+  // withCredentials: true,
   timeout: 10000,
 });
 
@@ -14,26 +15,30 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
-
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("API ERROR:", error.response);
+    // ✅ Log lebih detail untuk debugging
+    if (error.response) {
+      console.error("API ERROR:", error.response.status, error.response.data);
+    } else if (error.request) {
+      console.error("NO RESPONSE (network/CORS/timeout):", error.message);
+    } else {
+      console.error("REQUEST ERROR:", error.message);
+    }
 
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
+      // window.location.href = "/login"; // opsional: redirect
     }
 
     return Promise.reject(error);
