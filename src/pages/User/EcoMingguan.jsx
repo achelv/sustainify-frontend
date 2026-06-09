@@ -1,500 +1,557 @@
 import { useState, useEffect } from "react";
-import api from "../../api";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  BarChart, Bar, CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid,
 } from "recharts";
-import {
-  AcIcon, LampuIcon, TvIcon, KulkasIcon, RiceCookerIcon, KipasIcon,
-  PlugIcon, WarningIcon, StarIcon, LeafIcon, CO2Icon,
-} from "../../components/icons/Icon";
+import api from "../../api";
 
 // ── Helpers ──────────────────────────────────────────────────
-const HARI = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
-const labelMap = { ac: "AC", lampu: "Lampu", tv: "TV", kulkas: "Kulkas", ricecooker: "Rice Cooker", kipas: "Kipas Angin" };
-const batasNormal = { ac: 6*7, lampu: 12*7, tv: 5*7, kulkas: 24*7, ricecooker: 4*7, kipas: 8*7 };
-const getApplianceIcon = (key) => {
-  const map = {
-    ac:         <AcIcon />,
-    lampu:      <LampuIcon />,
-    tv:         <TvIcon />,
-    kulkas:     <KulkasIcon />,
-    ricecooker: <RiceCookerIcon />,
-    kipas:      <KipasIcon />,
-  };
-  return map[key] ?? <PlugIcon />;
+const getWeekRange = () => {
+  const now = new Date();
+  const day = now.getDay();
+  const diffToMon = (day === 0 ? -6 : 1 - day);
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diffToMon);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return { start: monday, end: sunday };
 };
 
-const rekomendasi = [
-  "Atur timer AC maksimal 6 jam/hari untuk menghemat energi.",
-  "Gunakan transportasi umum atau bersepeda untuk menghemat energi.",
-];
+const toDateStr = (d) => d.toISOString().split("T")[0];
+const pct = (val, batas) => Math.min((val / batas) * 100, 100);
 
-const saran = [
-  "Kurangi penggunaan AC pada malam hari",
-  "Matikan perangkat yang tidak digunakan atau dalam keadaan standby.",
-];
+const getIcon = (name = "") => {
+  const n = name.toLowerCase();
+  if (n.includes("ac") || n.includes("pendingin")) return "❄️";
+  if (n.includes("lampu") || n.includes("cahaya")) return "💡";
+  if (n.includes("tv") || n.includes("televisi")) return "📺";
+  if (n.includes("kulkas") || n.includes("lemari")) return "🧊";
+  if (n.includes("rice") || n.includes("nasi")) return "🍚";
+  if (n.includes("kipas")) return "🌀";
+  if (n.includes("mesin cuci")) return "🫧";
+  return "🔌";
+};
 
-// ── Sub-components ───────────────────────────────────────────
-const Card = ({ children, style = {} }) => (
-  <div style={{
-    background: "#fff",
-    borderRadius: "16px",
-    border: "1px solid #e5e7eb",
-    padding: "20px",
-    ...style,
-  }}>
-    {children}
+const getIconTransportasi = (name = "") => {
+  const n = name.toLowerCase();
+  if (n.includes("motor") || n.includes("sepeda motor")) return "🏍️";
+  if (n.includes("mobil") || n.includes("car")) return "🚗";
+  if (n.includes("bus")) return "🚌";
+  if (n.includes("sepeda")) return "🚲";
+  if (n.includes("truk")) return "🚛";
+  return "🚘";
+};
+
+// ── Sub-components ────────────────────────────────────────────
+const ScoreGauge = ({ percent }) => {
+  const r = 52, circ = Math.PI * r;
+  const dash = (percent / 100) * circ;
+  const color = percent >= 70 ? "#22c55e" : percent >= 40 ? "#f59e0b" : percent >= 20 ? "#f97316" : "#ef4444";
+  const label = percent >= 70 ? "Sangat Baik" : percent >= 40 ? "Baik" : percent >= 20 ? "Cukup" : "Perlu Perhatian";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+      <svg width="130" height="75" viewBox="0 0 130 75">
+        <path d="M 10 70 A 55 55 0 0 1 120 70" fill="none" stroke="#e5e7eb" strokeWidth="12" strokeLinecap="round" />
+        <path d="M 10 70 A 55 55 0 0 1 120 70" fill="none" stroke={color} strokeWidth="12" strokeLinecap="round"
+          strokeDasharray={`${dash} ${circ}`} style={{ transition: "stroke-dasharray 1s ease" }} />
+        <text x="65" y="68" textAnchor="middle" fontSize="20" fontWeight="800" fill="#14532d">{percent}%</text>
+      </svg>
+      <span style={{ fontSize: "15px", fontWeight: "700", color, marginTop: "-4px" }}>{label}</span>
+    </div>
+  );
+};
+
+const MiniBar = ({ values = [], max, color }) => (
+  <div style={{ display: "flex", gap: "2px", alignItems: "flex-end", height: "28px" }}>
+    {values.map((v, i) => {
+      const h = Math.max(4, (v / (max || 1)) * 28);
+      return <div key={i} style={{ width: "5px", height: `${h}px`, borderRadius: "2px", background: color, opacity: 0.4 + (i / 7) * 0.6 }} />;
+    })}
+  </div>
+);
+
+const StatPill = ({ label, value, accent }) => (
+  <div style={{ padding: "10px 14px", borderRadius: "12px", background: "#f9fafb", border: "1px solid #e5e7eb", flex: 1 }}>
+    <div style={{ fontSize: "10px", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>{label}</div>
+    <div style={{ fontSize: "15px", fontWeight: "700", color: accent || "#14532d" }}>{value}</div>
   </div>
 );
 
 const Badge = ({ status }) => (
   <span style={{
-    padding: "3px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: 600,
+    padding: "3px 10px", borderRadius: "20px", fontSize: "10px", fontWeight: 700,
     background: status === "Melebihi" ? "#fef2f2" : "#f0fdf4",
     color: status === "Melebihi" ? "#dc2626" : "#16a34a",
+    border: `1px solid ${status === "Melebihi" ? "#fecaca" : "#bbf7d0"}`,
   }}>
-    {status}
+    {status === "Melebihi" ? "↑ Melebihi" : "✓ Normal"}
   </span>
 );
 
-const ScoreRing = ({ percent }) => {
-  const r = 44;
-  const circ = 2 * Math.PI * r;
-  const dash = (percent / 100) * circ;
-  return (
-    <svg width="110" height="110" viewBox="0 0 110 110">
-      <circle cx="55" cy="55" r={r} fill="none" stroke="#e5e7eb" strokeWidth="10" />
-      <circle
-        cx="55" cy="55" r={r} fill="none"
-        stroke="#16a34a" strokeWidth="10"
-        strokeDasharray={`${dash} ${circ}`}
-        strokeLinecap="round"
-        transform="rotate(-90 55 55)"
-      />
-      <text x="55" y="60" textAnchor="middle" fontSize="16" fontWeight="700" fill="#14532d">
-        {percent}%
-      </text>
-    </svg>
-  );
-};
+const KategoriBadge = ({ kategori }) => (
+  <span style={{
+    padding: "2px 8px", borderRadius: "20px", fontSize: "9px", fontWeight: 700,
+    background: kategori === "Transportasi" ? "#eff6ff" : "#f0fdf4",
+    color: kategori === "Transportasi" ? "#1d4ed8" : "#16a34a",
+    border: `1px solid ${kategori === "Transportasi" ? "#bfdbfe" : "#bbf7d0"}`,
+  }}>
+    {kategori}
+  </span>
+);
 
-const InnerBox = ({ children, variant = "green", style = {} }) => {
-  const variants = {
-    green: { background: "#f0fdf4", border: "1px solid #bbf7d0" },
-    gray:  { background: "#f9fafb", border: "1px solid #e5e7eb" },
-  };
+const CustomTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      borderRadius: "10px",
-      padding: "12px",
-      display: "flex",
-      flexDirection: "column",
-      flex: 1,
-      marginTop: "12px",
-      gap: "8px",
-      ...variants[variant],
-      ...style,
-    }}>
-      {children}
+    <div style={{ background: "#14532d", borderRadius: "10px", padding: "8px 14px", color: "#fff", fontSize: "12px", boxShadow: "0 8px 24px rgba(20,83,45,0.3)" }}>
+      <div style={{ fontWeight: 700 }}>{label}</div>
+      <div style={{ opacity: 0.85 }}>{payload[0].value} kg CO₂</div>
     </div>
   );
 };
 
-const KRow = ({ label, val, bold, last }) => (
-  <div style={{
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "5px 0",
-    borderBottom: last ? "none" : "1px solid #e5e7eb",
-    fontSize: "12px",
-    gap: "6px",
-    flexWrap: "wrap",
-  }}>
-    <span style={{ color: "#6b7280" }}>{label}</span>
-    <span style={{ fontWeight: bold ? 600 : 500, color: "#14532d" }}>{val}</span>
-  </div>
-);
-
-const CustomDot = ({ cx, cy, payload }) => (
-  <circle
-    cx={cx} cy={cy} r={4}
-    fill={payload.predicted ? "#dc2626" : "#14532d"}
-    stroke="none"
-  />
-);
-
-// ── Main Component ───────────────────────────────────────────
+// ── MAIN ─────────────────────────────────────────────────────
 const EcoMingguan = () => {
   const [mode, setMode] = useState("mingguan");
+  const [filterKategori, setFilterKategori] = useState("semua");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [weeklyData, setWeeklyData]     = useState([]);
+  const [monthlyData, setMonthlyData]   = useState([]);
+  const [appliances, setAppliances]     = useState([]);
+  const [summary, setSummary]           = useState(null);
+  const [totalEmisi, setTotalEmisi]     = useState(0);
+  const [scorePercent, setScorePercent] = useState(0);
 
-  const [totalEmisi,  setTotalEmisi]  = useState(0);
-  const [weeklyData,  setWeeklyData]  = useState(HARI.map(n => ({ name: n, value: 0 })));
-  const [monthlyData, setMonthlyData] = useState([]);
-  const [kData,       setKData]       = useState({
-    mingguan: { title: "Keterangan minggu ini", rows: [], note: "" },
-    bulanan:  { title: "Keterangan bulan ini",  rows: [], note: "" },
-  });
-  const [appliances,   setAppliances]  = useState([]);
-  const [alerts,       setAlerts]      = useState([]);
-  const [forecastData, setForecastData] = useState([]);
-  const [score,        setScore]       = useState({ percent: 0, label: "Menghitung..." });
+  const now = new Date();
+  const { start, end } = getWeekRange();
+  const bulanLabel = now.toLocaleString("id-ID", { month: "long", year: "numeric" });
 
-  useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [resT, resR] = await Promise.all([
-          api.get("/aktivitas"),
-          api.get("/rumah-tangga"),
-        ]);
-        const rawT = resT.data.data ?? [];
-        const rawR = resR.data.data ?? [];
+  useEffect(() => { fetchData(); }, []);
 
-        // ── Minggu ini ───────────────────────────────────
-        const now    = new Date();
-        const sevenDaysAgo = new Date(now);
-        sevenDaysAgo.setDate(now.getDate() - 7);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [rtRes, trRes] = await Promise.all([
+        api.get("/rumah-tangga"),
+        api.get("/aktivitas"),
+      ]);
 
-        const isThisWeek = d => d >= sevenDaysAgo && d <= now;
-        const isThisMonth = d => d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      const rtData = rtRes.data?.data || rtRes.data || [];
+      const trData = trRes.data?.data || trRes.data || [];
+      const allAktivitas = [...rtData, ...trData];
 
-        const tWeek = rawT.filter(i => isThisWeek(new Date(i.tanggal)));
-        const rWeek = rawR.filter(i => isThisWeek(new Date(i.tanggal)));
-        const allWeek = [...tWeek, ...rWeek];
-        const total = allWeek.reduce((s, i) => s + parseFloat(i.emisi_karbon), 0);
-        setTotalEmisi(total);
+      // ── Mingguan ──
+      const weekDays = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+      const weekMap = {};
+      weekDays.forEach(d => weekMap[d] = 0);
 
-        // ── Weekly chart ─────────────────────────────────
-        const byDay = Array(7).fill(0);
-        allWeek.forEach(i => {
-          const idx = (new Date(i.tanggal).getDay() + 6) % 7;
-          byDay[idx] += parseFloat(i.emisi_karbon);
-        });
-        const wData = HARI.map((n, i) => ({ name: n, value: parseFloat(byDay[i].toFixed(2)) }));
-        setWeeklyData(wData);
-
-        // ── Monthly chart ────────────────────────────────
-        const tMonth   = rawT.filter(i => isThisMonth(new Date(i.tanggal)));
-        const rMonth   = rawR.filter(i => isThisMonth(new Date(i.tanggal)));
-        const allMonth = [...tMonth, ...rMonth];
-        const byDate   = {};
-        allMonth.forEach(i => {
-          const key = new Date(i.tanggal).getDate();
-          byDate[key] = (byDate[key] || 0) + parseFloat(i.emisi_karbon);
-        });
-        const mData = Object.entries(byDate)
-          .sort((a, b) => a[0] - b[0])
-          .map(([d, v]) => ({
-            name: `${d} ${now.toLocaleString("id-ID", { month: "short" })}`,
-            value: parseFloat(v.toFixed(2)),
-          }));
-        setMonthlyData(mData);
-
-        // ── Keterangan ───────────────────────────────────
-        const maxDay  = wData.reduce((a, b) => b.value > a.value ? b : a, wData[0]);
-        const minDay  = wData.filter(d => d.value > 0).reduce((a, b) => b.value < a.value ? b : a, wData.find(d => d.value > 0) || wData[0]);
-        const avg     = total / 7;
-        const totalMonth = allMonth.reduce((s, i) => s + parseFloat(i.emisi_karbon), 0);
-        const maxDate = mData.length > 0 ? mData.reduce((a, b) => b.value > a.value ? b : a, mData[0]) : { name: "-", value: 0 };
-        const minDate = mData.filter(d => d.value > 0).reduce((a, b) => b.value < a.value ? b : a, mData[0] || { name: "-", value: 0 });
-        const avgMonth = mData.length > 0 ? totalMonth / mData.length : 0;
-        const bulan    = now.toLocaleString("id-ID", { month: "long", year: "numeric" });
-
-        setKData({
-          mingguan: {
-            title: "Keterangan minggu ini",
-            rows: [
-              { label: "Total emisi minggu ini", val: `${total.toFixed(2)} kg co₂`,                        bold: true },
-              { label: "Emisi tertinggi",        val: `${maxDay?.name || "-"} · ${maxDay?.value.toFixed(2) || 0} kg` },
-              { label: "Emisi terendah",         val: `${minDay?.name || "-"} · ${minDay?.value.toFixed(2) || 0} kg` },
-              { label: "Rata-rata harian",       val: `${avg.toFixed(2)} kg` },
-            ],
-            note: `Hari ${maxDay?.name || "-"} memiliki emisi tertinggi minggu ini.`,
-          },
-          bulanan: {
-            title: `Keterangan ${bulan}`,
-            rows: [
-              { label: "Total emisi bulan ini", val: `${totalMonth.toFixed(2)} kg co₂`,                        bold: true },
-              { label: "Emisi tertinggi",       val: `${maxDate?.name || "-"} · ${maxDate?.value.toFixed(2) || 0} kg` },
-              { label: "Emisi terendah",        val: `${minDate?.name || "-"} · ${minDate?.value.toFixed(2) || 0} kg` },
-              { label: "Rata-rata harian",      val: `${avgMonth.toFixed(2)} kg` },
-            ],
-            note: `Total emisi bulan ${bulan} berdasarkan data aktivitas yang tercatat.`,
-          },
-        });
-
-        // ── Appliances ───────────────────────────────────
-        const jamPerJenis = {};
-        rawR.forEach(i => {
-          jamPerJenis[i.jenis_aktivitas] = (jamPerJenis[i.jenis_aktivitas] || 0) + parseFloat(i.durasi_jam);
-        });
-        const appList = Object.entries(jamPerJenis).map(([key, jam]) => {
-          const batas  = batasNormal[key] || 999;
-          const status = jam > batas ? "Melebihi" : "Normal";
-          return {
-            icon: getApplianceIcon(key),
-            name:   labelMap[key] || key,
-            sub:    `Batasan normal: ${batas / 7} jam/hari`,
-            hours:  jam,
-            status,
-          };
-        });
-        setAppliances(appList);
-        setAlerts(appList.filter(a => a.status === "Melebihi"));
-
-        // ── Forecasting ──────────────────────────────────
-        const months = {};
-        [...rawT, ...rawR].forEach(i => {
-          const d   = new Date(i.tanggal);
-          const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, "0")}`;
-          months[key] = (months[key] || 0) + parseFloat(i.emisi_karbon);
-        });
-        const fData = Object.entries(months)
-          .sort((a, b) => a[0].localeCompare(b[0]))
-          .map(([key, val]) => {
-            const [y, m] = key.split("-");
-            return { name: new Date(y, m).toLocaleString("id-ID", { month: "short" }), value: parseFloat(val.toFixed(2)) };
-          });
-        if (fData.length > 0) {
-          const last = fData[fData.length - 1];
-          const pred = parseFloat((last.value * 1.08).toFixed(2));
-          const next = new Date(now.getFullYear(), now.getMonth() + 1);
-          fData.push({ name: `${next.toLocaleString("id-ID", { month: "short" })} (pred)`, value: pred, predicted: true });
+      allAktivitas.forEach(item => {
+        const tgl = new Date(item.tanggal || item.created_at);
+        if (tgl >= start && tgl <= end) {
+          const dayIdx = tgl.getDay();
+          const dayName = weekDays[dayIdx === 0 ? 6 : dayIdx - 1];
+          weekMap[dayName] = parseFloat(
+            ((weekMap[dayName] || 0) + parseFloat(item.emisi_karbon || 0)).toFixed(2)
+          );
         }
-        setForecastData(fData);
+      });
 
-        // ── Score ────────────────────────────────────────
-        const limit = 50;
-        const pct   = Math.max(Math.min(Math.round(((limit - total) / limit) * 100), 100), 0);
-        const label = pct >= 70 ? "Sangat Baik" : pct >= 40 ? "Baik" : pct >= 20 ? "Cukup" : "Perlu Perhatian";
-        setScore({ percent: pct, label });
+      const weekly = weekDays.map(d => ({ name: d, value: weekMap[d] }));
+      setWeeklyData(weekly);
 
-      } catch (err) {
-        console.error("Gagal fetch eco mingguan:", err);
-      }
-    };
-    fetchAll();
-  }, []);
+      // ── Bulanan ──
+      const monthMap = {};
+      allAktivitas.forEach(item => {
+        const tgl = new Date(item.tanggal || item.created_at);
+        if (tgl.getMonth() === now.getMonth() && tgl.getFullYear() === now.getFullYear()) {
+          const key = `${tgl.getDate()} ${now.toLocaleString("id-ID", { month: "short" })}`;
+          monthMap[key] = parseFloat(
+            ((monthMap[key] || 0) + parseFloat(item.emisi_karbon || 0)).toFixed(2)
+          );
+        }
+      });
+      const monthly = Object.entries(monthMap)
+        .sort((a, b) => parseInt(a[0]) - parseInt(b[0]))
+        .map(([name, value]) => ({ name, value }));
+      setMonthlyData(monthly);
+
+      // ── Total & Score ──
+      const totalMinggu = weekly.reduce((s, d) => s + d.value, 0);
+      setTotalEmisi(parseFloat(totalMinggu.toFixed(2)));
+      setScorePercent(Math.max(0, Math.min(100, Math.round((1 - totalMinggu / 100) * 100))));
+
+      // ── Summary ──
+      const activeWeek = weekly.filter(d => d.value > 0);
+      const maxDay = activeWeek.reduce((a, b) => b.value > a.value ? b : a, activeWeek[0] || { name: "-", value: 0 });
+      const minDay = activeWeek.reduce((a, b) => b.value < a.value ? b : a, activeWeek[0] || { name: "-", value: 0 });
+      const avg = activeWeek.length ? (totalMinggu / activeWeek.length).toFixed(2) : "0.00";
+      setSummary({ maxDay, minDay, avg, total: totalMinggu.toFixed(2) });
+
+      // ── Perangkat: Rumah Tangga ──
+      const deviceMap = {};
+
+      rtData.forEach(item => {
+        const tgl = new Date(item.tanggal || item.created_at);
+        if (tgl >= start && tgl <= end) {
+          const nama = item.jenis_aktivitas || item.nama_aktivitas || `Aktivitas ${item.aktivitas_id}`;
+          if (!deviceMap[nama]) deviceMap[nama] = { name: nama, hours: 0, kategori: "Rumah Tangga" };
+          deviceMap[nama].hours += parseFloat(item.durasi_jam || 0);
+        }
+      });
+
+      // ── Perangkat: Transportasi ──
+      trData.forEach(item => {
+        const tgl = new Date(item.tanggal || item.created_at);
+        if (tgl >= start && tgl <= end) {
+          const nama = item.nama_kendaraan || item.jenis_kendaraan || `Kendaraan ${item.kendaraan_id}`;
+          if (!deviceMap[nama]) deviceMap[nama] = { name: nama, hours: 0, kategori: "Transportasi" };
+          deviceMap[nama].hours += parseFloat(item.jarak_km || 0);
+        }
+      });
+
+      const BATAS_RT = 42;
+      const BATAS_TR = 100;
+
+      setAppliances(Object.values(deviceMap).map(d => ({
+        name: d.name,
+        icon: d.kategori === "Transportasi" ? getIconTransportasi(d.name) : getIcon(d.name),
+        hours: parseFloat(d.hours.toFixed(1)),
+        batas: d.kategori === "Transportasi" ? BATAS_TR : BATAS_RT,
+        satuan: d.kategori === "Transportasi" ? "km" : "h",
+        status: d.hours > (d.kategori === "Transportasi" ? BATAS_TR : BATAS_RT) ? "Melebihi" : "Normal",
+        kategori: d.kategori,
+      })));
+
+    } catch (err) {
+      console.error("Gagal fetch:", err);
+      setError("Gagal memuat data. Pastikan kamu sudah login.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const barData = mode === "mingguan" ? weeklyData : monthlyData;
-  const k = kData[mode];
+  const maxVal  = Math.max(...barData.map(d => d.value), 1);
+  const alerts  = appliances.filter(a => a.status === "Melebihi");
+  const filteredAppliances = filterKategori === "semua"
+    ? appliances
+    : appliances.filter(a => a.kategori === filterKategori);
 
-  const axisProps = {
-    tick: { fontSize: 11, fill: "#9ca3af" },
-    axisLine: false,
-    tickLine: false,
-  };
+  if (loading) return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", flexDirection: "column", gap: "12px" }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ width: "40px", height: "40px", border: "4px solid #d1fae5", borderTop: "4px solid #14532d", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+      <span style={{ color: "#6b7280", fontSize: "13px" }}>Memuat data minggu ini...</span>
+    </div>
+  );
 
-  const tooltipStyle = {
-    contentStyle: {
-      borderRadius: "8px", border: "none",
-      boxShadow: "0 4px 12px rgba(0,0,0,0.1)", fontSize: "12px",
-    },
-    formatter: v => [`${v} kg co₂`, "Emisi"],
-  };
+  if (error) return (
+    <div style={{ padding: "40px", textAlign: "center", color: "#dc2626" }}>
+      <div style={{ fontSize: "32px", marginBottom: "12px" }}>⚠️</div>
+      <div style={{ fontWeight: 700 }}>{error}</div>
+      <button onClick={fetchData} style={{ marginTop: "16px", padding: "8px 20px", borderRadius: "10px", background: "#14532d", color: "#fff", border: "none", cursor: "pointer", fontWeight: 600 }}>
+        Coba Lagi
+      </button>
+    </div>
+  );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div style={{ fontFamily: "'DM Sans', 'Nunito', sans-serif", padding: "24px", background: "#f6faf7", minHeight: "100vh", color: "#111827" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap');
+        * { box-sizing: border-box; }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f0fdf4; } ::-webkit-scrollbar-thumb { background: #86efac; border-radius: 99px; }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+        .card { animation: fadeUp .4s ease both; }
+      `}</style>
 
-      {/* ROW 1: Total Emisi + Score */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px" }}>
-
-        {/* Total Emisi */}
-        <Card>
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
-            <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "#e8f5e9", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <CO2Icon /> 
-            </div>
-            <div>
-              <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "2px" }}>Total Emisi</div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "4px" }}>
-                <span style={{ fontSize: "32px", fontWeight: 800, color: "#14532d", lineHeight: 1 }}>{totalEmisi.toFixed(3)}</span>
-                <span style={{ fontSize: "13px", color: "#6b7280" }}>kg<sub>co₂</sub></span>
-              </div>
-            </div>
-          </div>
-          <div style={{ marginTop: "14px", padding: "8px 12px", borderRadius: "10px", background: "#f0fdf4", display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "12px", color: "#16a34a", fontWeight: 600 }}>Data minggu ini</span>
-          </div>
-        </Card>
-
-        {/* Score */}
-        <Card>
-          <div style={{ fontSize: "13px", color: "#6b7280", marginBottom: "12px", fontWeight: 600 }}>Score</div>
-          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <ScoreRing percent={score.percent} />
-            <div>
-              <div style={{ fontSize: "18px", fontWeight: 700, color: "#14532d" }}>{score.label}</div>
-              <div style={{ fontSize: "12px", color: "#6b7280", marginBottom: "10px" }}>Penggunaan Energi minggu ini</div>
-              <div style={{ padding: "4px 12px", borderRadius: "20px", background: "#f0fdf4", border: "1px solid #bbf7d0", fontSize: "11px", fontWeight: 600, color: "#16a34a", display: "inline-block" }}>
-                {score.percent}% : {score.label}
-              </div>
-            </div>
-          </div>
-        </Card>
+      {/* HEADER */}
+      <div style={{ marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: "22px", fontWeight: 800, color: "#14532d", letterSpacing: "-0.02em" }}>Eco Mingguan</h1>
+          <p style={{ margin: "2px 0 0", fontSize: "13px", color: "#6b7280" }}>
+            Pantau jejak karbon & konsumsi energimu minggu ini
+            <span style={{ marginLeft: "8px", fontSize: "11px", color: "#9ca3af" }}>
+              ({toDateStr(start)} – {toDateStr(end)})
+            </span>
+          </p>
+        </div>
+        <div style={{ padding: "8px 16px", borderRadius: "10px", background: "#14532d", color: "#fff", fontSize: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+          <span>📅</span> {bulanLabel}
+        </div>
       </div>
 
-      {/* ROW 2: Forecasting + Statistik + Appliances */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px", alignItems: "stretch" }}>
+      {/* KPI CARDS */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "20px" }}>
 
-        {/* Forecasting */}
-        <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid #e5e7eb", padding: "16px", display: "flex", flexDirection: "column" }}>
-          <div style={{ marginBottom: "10px" }}>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: "#111827" }}>Forecasting</div>
-            <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "2px" }}>Analisis berdasarkan data bulan terakhir</div>
+        {/* Total Emisi */}
+        <div className="card" style={{ background: "linear-gradient(135deg, #14532d 0%, #166534 100%)", borderRadius: "18px", padding: "20px", color: "#fff", animationDelay: "0ms", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -20, right: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+          <div style={{ position: "absolute", bottom: -30, left: -10, width: 120, height: 120, borderRadius: "50%", background: "rgba(255,255,255,0.04)" }} />
+          <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.7, marginBottom: "8px" }}>Total Emisi Minggu Ini</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+            <span style={{ fontSize: "36px", fontWeight: 800, lineHeight: 1 }}>{totalEmisi.toFixed(2)}</span>
+            <span style={{ fontSize: "13px", opacity: 0.8 }}>kg CO₂</span>
           </div>
-          <ResponsiveContainer width="100%" height={150}>
-            <LineChart data={forecastData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-              <XAxis dataKey="name" {...axisProps} />
-              <YAxis {...axisProps} />
-              <Tooltip {...tooltipStyle} />
-              <Line type="monotone" dataKey="value" stroke="#14532d" strokeWidth={2} dot={<CustomDot />} activeDot={{ r: 6 }} />
-            </LineChart>
-          </ResponsiveContainer>
-          <InnerBox variant="green">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "6px" }}>
-              <span style={{ fontSize: "12px", fontWeight: 700, color: "#14532d" }}>Ringkasan prediksi</span>
-              <span style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "6px", background: "#dcfce7", color: "#14532d", border: "1px solid #bbf7d0" }}>
-                ⏱ Data real
-              </span>
+          <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+            <MiniBar values={weeklyData.map(d => d.value)} max={maxVal} color="#fff" />
+            <span style={{ fontSize: "11px", opacity: 0.7, marginLeft: "4px" }}>7 hari terakhir</span>
+          </div>
+        </div>
+
+        {/* Eco Score */}
+        <div className="card" style={{ background: "#fff", borderRadius: "18px", padding: "20px", border: "1px solid #e5e7eb", display: "flex", flexDirection: "column", alignItems: "center", animationDelay: "60ms" }}>
+          <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "8px", alignSelf: "flex-start" }}>Eco Score</div>
+          <ScoreGauge percent={scorePercent} />
+          <div style={{ fontSize: "11px", color: "#6b7280", marginTop: "4px" }}>Penggunaan energi minggu ini</div>
+        </div>
+
+        {/* Status */}
+        <div className="card" style={{ background: "#fff", borderRadius: "18px", padding: "20px", border: "1px solid #e5e7eb", animationDelay: "120ms" }}>
+          <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "12px" }}>Status Aktivitas</div>
+          <div style={{ display: "flex", gap: "12px", marginBottom: "14px" }}>
+            <div style={{ flex: 1, background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "12px", textAlign: "center" }}>
+              <div style={{ fontSize: "24px", fontWeight: 800, color: "#dc2626" }}>{alerts.length}</div>
+              <div style={{ fontSize: "11px", color: "#ef4444" }}>Melebihi Batas</div>
             </div>
-            <p style={{ fontSize: "11px", color: "#166534", lineHeight: 1.6, margin: 0 }}>
-              Emisi diperkirakan naik <strong>8%</strong> pada bulan depan jika pola penggunaan tidak berubah.
-            </p>
-            {forecastData.length > 0 && (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "6px", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", padding: "12px", textAlign: "center" }}>
-                <div style={{ fontSize: "10px", color: "#6b7280" }}>Prediksi bulan depan</div>
-                <div style={{ fontSize: "22px", fontWeight: 700, color: "#14532d", lineHeight: 1 }}>
-                  {forecastData[forecastData.length - 1]?.value} <span style={{ fontSize: "12px", fontWeight: 400, color: "#9ca3af" }}>kg co₂</span>
-                </div>
-                <div style={{ fontSize: "11px", color: "#16a34a" }}>↑ 8% dari bulan ini</div>
+            <div style={{ flex: 1, background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "12px", padding: "12px", textAlign: "center" }}>
+              <div style={{ fontSize: "24px", fontWeight: 800, color: "#16a34a" }}>{appliances.length - alerts.length}</div>
+              <div style={{ fontSize: "11px", color: "#16a34a" }}>Normal</div>
+            </div>
+          </div>
+          {alerts.length === 0
+            ? <div style={{ fontSize: "12px", color: "#16a34a", textAlign: "center" }}>Semua aktivitas normal ✓</div>
+            : alerts.map((a, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", borderTop: "1px solid #f3f4f6" }}>
+                <span style={{ fontSize: "14px" }}>{a.icon}</span>
+                <span style={{ fontSize: "12px", color: "#374151", flex: 1 }}>{a.name}</span>
+                <span style={{ fontSize: "10px", color: "#6b7280" }}>{a.kategori}</span>
+                <span style={{ fontSize: "11px", fontWeight: 700, color: "#dc2626" }}>+{(a.hours - a.batas).toFixed(1)}{a.satuan}</span>
               </div>
-            )}
-          </InnerBox>
+            ))
+          }
         </div>
 
         {/* Statistik */}
-        <div style={{ background: "#fff", borderRadius: "16px", border: "1px solid #e5e7eb", padding: "16px", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "10px", gap: "6px" }}>
-            <div>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "#111827" }}>Statistik</div>
-              <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "2px" }}>
-                {mode === "mingguan" ? "Emisi harian minggu ini" : "Emisi harian bulan ini"}
-              </div>
+        {summary && (
+          <div className="card" style={{ background: "#fff", borderRadius: "18px", padding: "20px", border: "1px solid #e5e7eb", animationDelay: "180ms" }}>
+            <div style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.08em", color: "#9ca3af", marginBottom: "12px" }}>Statistik Mingguan</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <StatPill label="Rata-rata harian"                       value={`${summary.avg} kg`}                            accent="#14532d" />
+              <StatPill label={`Tertinggi – ${summary.maxDay?.name}`} value={`${summary.maxDay?.value?.toFixed(2) || 0} kg`} accent="#dc2626" />
+              <StatPill label={`Terendah – ${summary.minDay?.name}`}  value={`${summary.minDay?.value?.toFixed(2) || 0} kg`} accent="#16a34a" />
             </div>
-            <select value={mode} onChange={e => setMode(e.target.value)} style={{ fontSize: "12px", padding: "4px 10px", borderRadius: "8px", border: "1px solid #e5e7eb", color: "#374151", background: "#fff", cursor: "pointer", fontFamily: "inherit" }}>
-              <option value="mingguan">Mingguan</option>
-              <option value="bulanan">Bulanan</option>
-            </select>
           </div>
-          <ResponsiveContainer width="100%" height={150}>
-            <BarChart data={barData} barSize={16} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-              <CartesianGrid vertical={false} stroke="#f3f4f6" />
-              <XAxis dataKey="name" {...axisProps} />
-              <YAxis {...axisProps} />
-              <Tooltip {...tooltipStyle} />
-              <Bar dataKey="value" fill="#14532d" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <InnerBox variant="gray">
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "#374151" }}>{k.title}</div>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              {k.rows.map((row, i) => (
-                <KRow key={i} label={row.label} val={row.val} bold={row.bold} last={i === k.rows.length - 1} />
+        )}
+      </div>
+
+      {/* CHART + AKTIVITAS */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "16px", marginBottom: "20px" }}>
+
+        {/* Chart */}
+        <div className="card" style={{ background: "#fff", borderRadius: "18px", border: "1px solid #e5e7eb", padding: "20px", animationDelay: "200ms" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <div>
+              <div style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>Grafik Emisi Karbon</div>
+              <div style={{ fontSize: "11px", color: "#9ca3af" }}>
+                {mode === "mingguan" ? `Per hari – ${toDateStr(start)} s/d ${toDateStr(end)}` : `Per hari – ${bulanLabel}`}
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "4px", background: "#f3f4f6", borderRadius: "10px", padding: "3px" }}>
+              {["mingguan", "bulanan"].map(m => (
+                <button key={m} onClick={() => setMode(m)} style={{ padding: "5px 12px", borderRadius: "8px", border: "none", cursor: "pointer", fontSize: "11px", fontWeight: 600, background: mode === m ? "#14532d" : "transparent", color: mode === m ? "#fff" : "#6b7280", transition: "all .2s" }}>
+                  {m === "mingguan" ? "Minggu" : "Bulan"}
+                </button>
               ))}
             </div>
-            <p style={{ fontSize: "11px", color: "#6b7280", lineHeight: 1.5, margin: 0, paddingTop: "8px", borderTop: "1px solid #e5e7eb" }}>
-              {k.note}
-            </p>
-          </InnerBox>
-        </div>
+          </div>
 
-        {/* Alerts + Appliances */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {alerts.length > 0 && alerts.map((a, i) => (
-            <Card key={i} style={{ border: "1px solid #fde68a", background: "#fffbeb" }}>
-              <div style={{ display: "flex", gap: "12px" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "8px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: "16px" }}>⚠️</div>
-                <div>
-                  <p style={{ fontSize: "12px", color: "#92400e", margin: "0 0 8px", lineHeight: 1.5 }}>
-                    Penggunaan {a.name} mencapai {a.hours} jam dan melebihi batas normal ({a.sub}).
-                  </p>
-                  <div style={{ fontSize: "12px", fontWeight: 700, color: "#dc2626" }}>Status: Melebihi batas</div>
-                </div>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={barData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="greenGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor="#14532d" stopOpacity={0.18} />
+                  <stop offset="95%" stopColor="#14532d" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="#f3f4f6" />
+              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+              <Tooltip content={<CustomTooltip />} />
+              <Area type="monotone" dataKey="value" stroke="#14532d" strokeWidth={2.5} fill="url(#greenGrad)"
+                dot={{ r: 3, fill: "#14532d", strokeWidth: 0 }} activeDot={{ r: 5, fill: "#14532d" }} />
+            </AreaChart>
+          </ResponsiveContainer>
+
+          {summary && (
+            <div style={{ marginTop: "14px", background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "12px", padding: "14px" }}>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "#374151", marginBottom: "8px" }}>
+                {mode === "mingguan" ? "Ringkasan Minggu Ini" : "Ringkasan Bulan Ini"}
               </div>
-            </Card>
-          ))}
-
-          {appliances.length > 0 && (
-            <Card style={{ padding: "16px" }}>
-              {appliances.map((item, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 0", borderBottom: i < appliances.length - 1 ? "1px solid #f3f4f6" : "none" }}>
-                  <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}>
-                    {item.icon}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 600, color: "#111827" }}>{item.name}</div>
-                    <div style={{ fontSize: "11px", color: "#9ca3af" }}>{item.sub}</div>
-                  </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#14532d" }}>{item.hours} jam</div>
-                    <Badge status={item.status} />
-                  </div>
+              {[
+                { label: "Total emisi",      val: `${summary.total} kg CO₂`, bold: true },
+                { label: "Emisi tertinggi",  val: `${summary.maxDay?.name} · ${summary.maxDay?.value?.toFixed(2)} kg` },
+                { label: "Emisi terendah",   val: `${summary.minDay?.name} · ${summary.minDay?.value?.toFixed(2)} kg` },
+                { label: "Rata-rata harian", val: `${summary.avg} kg` },
+              ].map((row, i, arr) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: i < arr.length - 1 ? "1px solid #e5e7eb" : "none", fontSize: "12px" }}>
+                  <span style={{ color: "#6b7280" }}>{row.label}</span>
+                  <span style={{ fontWeight: row.bold ? 700 : 500, color: "#14532d" }}>{row.val}</span>
                 </div>
               ))}
-              <div style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "10px", background: "#f0fdf4", fontSize: "11px", color: "#374151", lineHeight: 1.6 }}>
-                Sedikit pengurangan penggunaan listrik dapat membantu mengurangi emisi karbon.
-              </div>
-            </Card>
+              <p style={{ margin: "10px 0 0", fontSize: "11px", color: "#9ca3af", borderTop: "1px solid #e5e7eb", paddingTop: "8px" }}>
+                {summary.maxDay?.name !== "-" ? `Hari ${summary.maxDay.name} memiliki emisi tertinggi minggu ini.` : "Belum ada data minggu ini."}
+              </p>
+            </div>
           )}
         </div>
+
+        {/* Aktivitas Panel */}
+        <div className="card" style={{ background: "#fff", borderRadius: "18px", border: "1px solid #e5e7eb", padding: "20px", animationDelay: "240ms" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+            <div style={{ fontSize: "14px", fontWeight: 700, color: "#111827" }}>Aktivitas Minggu Ini</div>
+          </div>
+          <div style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "12px" }}>Rumah tangga & transportasi</div>
+
+          {/* Filter tabs */}
+          <div style={{ display: "flex", gap: "6px", marginBottom: "14px" }}>
+            {["semua", "Rumah Tangga", "Transportasi"].map(k => (
+              <button key={k} onClick={() => setFilterKategori(k)} style={{
+                padding: "4px 10px", borderRadius: "20px", border: "none", cursor: "pointer", fontSize: "10px", fontWeight: 600,
+                background: filterKategori === k
+                  ? (k === "Transportasi" ? "#1d4ed8" : k === "Rumah Tangga" ? "#16a34a" : "#14532d")
+                  : "#f3f4f6",
+                color: filterKategori === k ? "#fff" : "#6b7280",
+                transition: "all .2s",
+              }}>
+                {k === "semua" ? "Semua" : k}
+              </button>
+            ))}
+          </div>
+
+          {filteredAppliances.length === 0
+            ? <div style={{ textAlign: "center", color: "#9ca3af", fontSize: "13px", padding: "20px" }}>Belum ada data minggu ini</div>
+            : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "380px", overflowY: "auto", paddingRight: "4px" }}>
+                {filteredAppliances.map((item, i) => {
+                  const p = pct(item.hours, item.batas);
+                  const over = item.status === "Melebihi";
+                  return (
+                    <div key={i}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px" }}>
+                        <span style={{ fontSize: "16px" }}>{item.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: "12px", fontWeight: 600, color: "#374151", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.name}</div>
+                          <KategoriBadge kategori={item.kategori} />
+                        </div>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: over ? "#dc2626" : "#16a34a", flexShrink: 0 }}>{item.hours}{item.satuan}</span>
+                        <Badge status={item.status} />
+                      </div>
+                      <div style={{ height: "6px", background: "#f3f4f6", borderRadius: "99px", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${p}%`, borderRadius: "99px", background: over ? "linear-gradient(90deg,#fca5a5,#ef4444)" : item.kategori === "Transportasi" ? "linear-gradient(90deg,#93c5fd,#1d4ed8)" : "linear-gradient(90deg,#86efac,#16a34a)", transition: "width 1s ease" }} />
+                      </div>
+                      <div style={{ fontSize: "10px", color: "#9ca3af", marginTop: "3px" }}>
+                        Batas normal: {item.batas}{item.satuan} · {Math.round(p)}% terpakai
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          }
+        </div>
       </div>
 
-      {/* ROW 3: Rekomendasi + Saran + Ilustrasi */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "16px", alignItems: "start" }}>
-        <Card>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
-            <span style={{ fontSize: "16px" }}>⭐</span>
+      {/* ALERTS */}
+      {alerts.length > 0 && (
+        <div style={{ marginBottom: "20px" }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "#374151", marginBottom: "10px" }}>⚠️ Peringatan Penggunaan</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "12px" }}>
+            {alerts.map((a, i) => (
+              <div key={i} className="card" style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "14px", padding: "16px", display: "flex", gap: "14px", animationDelay: `${300 + i * 60}ms` }}>
+                <div style={{ width: "40px", height: "40px", borderRadius: "12px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px", flexShrink: 0 }}>
+                  {a.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: "13px", fontWeight: 700, color: "#92400e", marginBottom: "2px" }}>{a.name} melebihi batas!</div>
+                  <div style={{ fontSize: "10px", color: "#a16207", marginBottom: "4px" }}>{a.kategori}</div>
+                  <div style={{ fontSize: "12px", color: "#a16207" }}>
+                    {a.hours}{a.satuan} digunakan — batas normal {a.batas}{a.satuan}/minggu.
+                  </div>
+                  <div style={{ marginTop: "6px", fontSize: "11px", fontWeight: 700, color: "#dc2626", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span style={{ display: "inline-block", width: "6px", height: "6px", borderRadius: "50%", background: "#dc2626" }} />
+                    Kelebihan {(a.hours - a.batas).toFixed(1)}{a.satuan}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* REKOMENDASI + SARAN + ECO BADGE */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "16px" }}>
+
+        <div className="card" style={{ background: "#fff", borderRadius: "18px", border: "1px solid #e5e7eb", padding: "20px", animationDelay: "320ms" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <div style={{ width: "30px", height: "30px", borderRadius: "8px", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>⭐</div>
             <span style={{ fontSize: "14px", fontWeight: 700, color: "#374151" }}>Rekomendasi</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {rekomendasi.map((text, i) => (
-              <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#d1fae5", border: "2px solid #16a34a", marginTop: "5px", flexShrink: 0 }} />
-                <p style={{ fontSize: "12px", color: "#374151", margin: 0, lineHeight: 1.6 }}>{text}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {[
+              { icon: "⏱️", text: "Atur timer AC maksimal 6 jam/hari untuk menghemat energi." },
+              { icon: "🚲", text: "Gunakan transportasi umum atau bersepeda untuk menghemat emisi." },
+              { icon: "🌙", text: "Matikan perangkat elektronik sepenuhnya saat tidak digunakan." },
+            ].map((r, i) => (
+              <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", padding: "10px", background: "#f9fafb", borderRadius: "10px" }}>
+                <span style={{ fontSize: "16px" }}>{r.icon}</span>
+                <p style={{ margin: 0, fontSize: "12px", color: "#374151", lineHeight: 1.6 }}>{r.text}</p>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
 
-        <Card>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
-            <span style={{ fontSize: "16px" }}>⭐</span>
-            <span style={{ fontSize: "14px", fontWeight: 700, color: "#374151" }}>Saran</span>
+        <div className="card" style={{ background: "#fff", borderRadius: "18px", border: "1px solid #e5e7eb", padding: "20px", animationDelay: "360ms" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+            <div style={{ width: "30px", height: "30px", borderRadius: "8px", background: "#d1fae5", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px" }}>💡</div>
+            <span style={{ fontSize: "14px", fontWeight: 700, color: "#374151" }}>Saran Hemat Energi</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {saran.map((text, i) => (
-              <div key={i} style={{ display: "flex", gap: "10px", alignItems: "flex-start" }}>
-                <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#d1fae5", border: "2px solid #16a34a", marginTop: "5px", flexShrink: 0 }} />
-                <p style={{ fontSize: "12px", color: "#374151", margin: 0, lineHeight: 1.6 }}>{text}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {[
+              { icon: "🌡️", text: "Kurangi penggunaan AC pada malam hari, gunakan kipas angin." },
+              { icon: "🔌", text: "Matikan perangkat yang tidak digunakan atau dalam keadaan standby." },
+              { icon: "☀️",  text: "Manfaatkan cahaya alami di siang hari untuk mengurangi penggunaan lampu." },
+            ].map((s, i) => (
+              <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start", padding: "10px", background: "#f9fafb", borderRadius: "10px" }}>
+                <span style={{ fontSize: "16px" }}>{s.icon}</span>
+                <p style={{ margin: 0, fontSize: "12px", color: "#374151", lineHeight: 1.6 }}>{s.text}</p>
               </div>
             ))}
           </div>
-        </Card>
+        </div>
 
-        <Card style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "120px" }}>
+        <div className="card" style={{ background: "linear-gradient(135deg, #14532d, #166534)", borderRadius: "18px", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", color: "#fff", animationDelay: "400ms", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -40, right: -40, width: 150, height: 150, borderRadius: "50%", background: "rgba(255,255,255,0.05)" }} />
+          <div style={{ position: "absolute", bottom: -20, left: -20, width: 100, height: 100, borderRadius: "50%", background: "rgba(255,255,255,0.06)" }} />
+          <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: "rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "32px" }}>🌿</div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ width: "80px", height: "80px", borderRadius: "50%", background: "linear-gradient(135deg, #d1fae5, #a7f3d0)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 8px", fontSize: "32px" }}>
-              🌿
-            </div>
-            <div style={{ fontSize: "12px", color: "#6b7280", fontWeight: 600 }}>CO₂ Karbon Emisi</div>
-            <div style={{ fontSize: "11px", color: "#9ca3af", marginTop: "4px" }}>Jaga bumi tetap hijau</div>
+            <div style={{ fontSize: "15px", fontWeight: 800, letterSpacing: "-0.01em" }}>CO₂ Karbon Emisi</div>
+            <div style={{ fontSize: "12px", opacity: 0.75, marginTop: "4px" }}>Jaga bumi tetap hijau 🌍</div>
           </div>
-        </Card>
-      </div>
+          <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
+            {["💚", "🌱", "♻️"].map((e, i) => (
+              <div key={i} style={{ width: "34px", height: "34px", borderRadius: "10px", background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>{e}</div>
+            ))}
+          </div>
+          <div style={{ width: "100%", padding: "10px 14px", borderRadius: "10px", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", textAlign: "center", fontSize: "11px", opacity: 0.85 }}>
+            Setiap tindakan kecil berarti bagi lingkungan
+          </div>
+        </div>
 
+      </div>
     </div>
   );
 };

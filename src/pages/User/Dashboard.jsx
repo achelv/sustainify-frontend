@@ -194,7 +194,10 @@ const Dashboard = () => {
           return {
             id:        item.id,
             type:      "rumah_tangga",
-            aktivitas: labelMap[item.jenis_aktivitas] || item.jenis_aktivitas,
+            aktivitas: labelMap[item.jenis_aktivitas?.toLowerCase()?.replace(/\s+/g, "")]
+            || item.rumah_tangga?.nama_aktivitas
+            || item.jenis_aktivitas
+            || "-",
             jumlah:    `${item.durasi_jam} jam`,
             tanggal:   date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
             date:      date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }) + ", " + date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" }).replace(":", "."),
@@ -318,7 +321,7 @@ const Dashboard = () => {
             background: "#ffffff", borderRadius: "20px", padding: "24px",
             boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #f3f4f6",
           }}>
-            <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#111827", marginBottom: "12px" }}>Statistik</h3>
+            <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#111827", marginBottom: "12px" }}>Statistik Emisi Mingguan</h3>
             {weeklyChartData.every(d => d.value === 0) ? (
               <p style={{ fontSize: "13px", color: "#9ca3af", textAlign: "center", padding: "24px 0" }}>Belum ada data statistik</p>
             ) : (
