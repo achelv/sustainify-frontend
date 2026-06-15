@@ -12,11 +12,6 @@ const FilterIcon = () => (
     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
   </svg>
 );
-const PlusIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-  </svg>
-);
 const EyeIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
@@ -79,8 +74,8 @@ const DetailModal = ({ user, onClose }) => (
         <div style={{ fontSize: "18px", fontWeight: 700, color: "#111827" }}>{user.name}</div>
       </div>
       {[
-        ["ID Pengguna", user.id],
-        ["Email",       user.email],
+        ["ID Pengguna",  user.id],
+        ["Email",        user.email],
         ["Emisi Karbon", `${user.emisi} kg CO₂`],
       ].map(([label, val]) => (
         <div key={label} style={{
@@ -102,8 +97,7 @@ const DetailModal = ({ user, onClose }) => (
 
 // ── Modal Edit ────────────────────────────────────────────────
 const FormModal = ({ user, onClose, onSave }) => {
-  const isEdit = !!user;
-  const [form, setForm] = useState(user || { name: "", email: "" });
+  const [form, setForm] = useState({ name: user?.name || "", email: user?.email || "" });
   const [loading, setLoading] = useState(false);
 
   const handleChange = (field, val) => setForm(prev => ({ ...prev, [field]: val }));
@@ -112,9 +106,7 @@ const FormModal = ({ user, onClose, onSave }) => {
     if (!form.name || !form.email) return;
     setLoading(true);
     try {
-      if (isEdit) {
-        await api.put(`/admin/users/${user.id}`, { name: form.name, email: form.email });
-      }
+      await api.put(`/admin/users/${user.id}`, { name: form.name, email: form.email });
       onSave();
       onClose();
     } catch (err) {
@@ -134,14 +126,11 @@ const FormModal = ({ user, onClose, onSave }) => {
     <Overlay onClose={onClose}>
       <div style={modalBox}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#14532d" }}>
-            {isEdit ? "Edit Pengguna" : "Detail Pengguna"}
-          </h3>
+          <h3 style={{ margin: 0, fontSize: "18px", fontWeight: 700, color: "#14532d" }}>Edit Pengguna</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#9ca3af" }}><CloseIcon /></button>
         </div>
-
         {[
-          { label: "Nama", field: "name", type: "text", placeholder: "Nama lengkap" },
+          { label: "Nama",  field: "name",  type: "text",  placeholder: "Nama lengkap" },
           { label: "Email", field: "email", type: "email", placeholder: "email@gmail.com" },
         ].map(({ label, field, type, placeholder }) => (
           <div key={field} style={{ marginBottom: "14px" }}>
@@ -155,7 +144,6 @@ const FormModal = ({ user, onClose, onSave }) => {
             />
           </div>
         ))}
-
         <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
           <button onClick={onClose} style={{
             flex: 1, padding: "11px", background: "#f3f4f6", color: "#374151",
@@ -245,14 +233,33 @@ const ManajemenUser = () => {
   const [filter,  setFilter]  = useState({ maxEmisi: 500 });
   const [page,    setPage]    = useState(1);
   const perPage = 8;
-
   const [modal, setModal] = useState(null);
 
+  // ✅ Fix: fetch users + emisi dari stats lalu gabungkan
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/admin/users");
-      setUsers(res.data.data ?? []);
+      const [resUsers, resStats] = await Promise.all([
+        api.get("/admin/users"),
+        api.get("/admin/stats"),
+      ]);
+
+      // Handle berbagai format response
+      const userData = resUsers.data?.data ?? resUsers.data ?? [];
+
+      // Buat map emisi per user dari stats
+      const emisiMap = {};
+      (resStats.data?.emisi_per_user ?? []).forEach(e => {
+        emisiMap[e.id] = e.total_emisi;
+      });
+
+      // Gabungkan emisi ke data user
+      const usersWithEmisi = (Array.isArray(userData) ? userData : []).map(u => ({
+        ...u,
+        emisi: emisiMap[u.id] ?? 0,
+      }));
+
+      setUsers(usersWithEmisi);
     } catch (err) {
       console.error("Gagal fetch users:", err);
     } finally {
@@ -263,10 +270,11 @@ const ManajemenUser = () => {
   useEffect(() => { fetchUsers(); }, []);
 
   const filtered = users.filter(u => {
-    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
+    const matchSearch =
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase()) ||
       String(u.id).includes(search);
-    const matchEmisi = u.emisi <= filter.maxEmisi;
+    const matchEmisi = (u.emisi ?? 0) <= filter.maxEmisi;
     return matchSearch && matchEmisi;
   });
 
@@ -305,10 +313,15 @@ const ManajemenUser = () => {
           <div style={{ fontSize: "16px", fontWeight: 800, color: "#fff" }}>Selamat datang,<br />Admin!</div>
           <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.8)", marginTop: "6px" }}>Kelola data pengguna.</div>
         </div>
-        <StatCard label="Total Pengguna" value={users.length}  sub="Pengguna terdaftar" color="#22c55e" />
+        <StatCard
+          label="Total Pengguna"
+          value={users.length}
+          sub="Pengguna terdaftar"
+          color="#22c55e"
+        />
         <StatCard
           label="Total Emisi"
-          value={`${users.reduce((s, u) => s + u.emisi, 0).toFixed(2)} kg`}
+          value={`${users.reduce((s, u) => s + (u.emisi ?? 0), 0).toFixed(2)} kg`}
           sub="Semua pengguna"
           color="#22c55e"
         />
@@ -321,11 +334,14 @@ const ManajemenUser = () => {
           <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ position: "relative" }}>
               <span style={{ position: "absolute", left: "12px", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }}><SearchIcon /></span>
-              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+              <input
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Search..."
                 style={{
-                  padding: "8px 12px 8px 36px", border: "1.5px solid #e5e7eb", borderRadius: "10px",
-                  fontSize: "13px", outline: "none", width: "180px", fontFamily: "inherit",
+                  padding: "8px 12px 8px 36px", border: "1.5px solid #e5e7eb",
+                  borderRadius: "10px", fontSize: "13px", outline: "none",
+                  width: "180px", fontFamily: "inherit",
                 }}
                 onFocus={e => e.target.style.borderColor = "#14532d"}
                 onBlur={e => e.target.style.borderColor = "#e5e7eb"}
@@ -342,7 +358,6 @@ const ManajemenUser = () => {
           </div>
         </div>
 
-        {/* Table */}
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
             <thead>
@@ -361,14 +376,15 @@ const ManajemenUser = () => {
               ) : paginated.length === 0 ? (
                 <tr><td colSpan={5} style={{ textAlign: "center", padding: "32px", color: "#9ca3af" }}>Tidak ada data</td></tr>
               ) : paginated.map(u => (
-                <tr key={u.id} style={{ borderBottom: "1px solid #f3f4f6" }}
+                <tr key={u.id}
+                  style={{ borderBottom: "1px solid #f3f4f6" }}
                   onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
                   onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                 >
                   <td style={{ padding: "11px 14px", color: "#6b7280", fontWeight: 500 }}>{u.id}</td>
                   <td style={{ padding: "11px 14px", color: "#111827", fontWeight: 500 }}>{u.name}</td>
                   <td style={{ padding: "11px 14px", color: "#6b7280" }}>{u.email}</td>
-                  <td style={{ padding: "11px 14px", color: "#374151" }}>{u.emisi} kg CO₂</td>
+                  <td style={{ padding: "11px 14px", color: "#14532d", fontWeight: 700 }}>{u.emisi} kg CO₂</td>
                   <td style={{ padding: "11px 14px" }}>
                     <div style={{ display: "flex", gap: "6px" }}>
                       <button title="Detail" onClick={() => setModal({ type: "detail", user: u })}

@@ -15,9 +15,10 @@ const StatCard = ({ label, value, sub, icon }) => (
 );
 
 const DashboardAdmin = () => {
-  const [stats,    setStats]    = useState({ total_user: 0, total_emisi: 0, chart_data: [] });
-  const [users,    setUsers]    = useState([]);
-  const [loading,  setLoading]  = useState(true);
+  const [stats,   setStats]   = useState({ total_users: 0, total_emisi: 0, chart_data: [], emisi_per_user: [] });
+  const [users,   setUsers]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error,   setError]   = useState(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -26,10 +27,27 @@ const DashboardAdmin = () => {
           api.get("/admin/stats"),
           api.get("/admin/users"),
         ]);
+
         setStats(resStats.data);
-        setUsers(resUsers.data.data ?? []);
+
+        // ✅ Fix: response langsung array, bukan { data: [...] }
+        const userData = resUsers.data?.data ?? resUsers.data ?? [];
+        
+        // ✅ Gabungkan emisi dari stats ke data user
+        const emisiMap = {};
+        (resStats.data?.emisi_per_user ?? []).forEach(e => {
+          emisiMap[e.id] = e.total_emisi;
+        });
+
+        const usersWithEmisi = (Array.isArray(userData) ? userData : []).map(u => ({
+          ...u,
+          emisi: emisiMap[u.id] ?? 0,
+        }));
+
+        setUsers(usersWithEmisi);
       } catch (err) {
         console.error("Gagal fetch admin dashboard:", err);
+        setError("Gagal memuat data. Coba refresh halaman.");
       } finally {
         setLoading(false);
       }
@@ -37,10 +55,18 @@ const DashboardAdmin = () => {
     fetchAll();
   }, []);
 
+  // Buat chart data dari emisi_per_user jika chart_data kosong
+  const chartData = stats.chart_data?.length > 0
+    ? stats.chart_data
+    : (stats.emisi_per_user ?? []).map(u => ({
+        bulan: u.name,
+        emisi: u.total_emisi,
+      }));
+
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#111827" }}>
 
-      {/* Baris atas: Welcome card + Stat cards */}
+      {/* Baris atas */}
       <div style={{ display: "flex", gap: "16px", marginBottom: "24px", flexWrap: "wrap" }}>
         <div style={{
           background: "linear-gradient(135deg, #14532d, #166534)",
@@ -58,24 +84,32 @@ const DashboardAdmin = () => {
           </div>
         </div>
 
-        <StatCard label="Total Pengguna" value={stats.total_user} sub="Pengguna terdaftar" icon="👤" />
-        <StatCard label="Total Emisi" value={`${stats.total_emisi} kg`} sub="Semua pengguna" icon="📈" />
+        {/* ✅ Fix: total_users (ada s) */}
+        <StatCard label="Total Pengguna" value={stats.total_users ?? 0}    sub="Pengguna terdaftar" icon="👤" />
+        <StatCard label="Total Emisi"    value={`${stats.total_emisi ?? 0} kg`} sub="Semua pengguna"    icon="📈" />
       </div>
 
-      {/* Baris bawah: Tabel + Chart */}
+      {/* Error */}
+      {error && (
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "10px", padding: "12px 16px", marginBottom: "16px", fontSize: "13px", color: "#dc2626" }}>
+          {error}
+        </div>
+      )}
+
+      {/* Baris bawah */}
       <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
 
-        {/* Tabel Daftar Pengguna */}
+        {/* Tabel */}
         <div style={{
           background: "#fff", borderRadius: "16px", padding: "24px",
           flex: "1 1 400px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <div style={{ fontSize: "16px", fontWeight: 700 }}>Daftar Pengguna</div>
-          </div>
+          <div style={{ fontSize: "16px", fontWeight: 700, marginBottom: "16px" }}>Daftar Pengguna</div>
 
           {loading ? (
             <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>Memuat data...</p>
+          ) : users.length === 0 ? (
+            <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "13px" }}>Tidak ada pengguna ditemukan.</p>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
               <thead>
@@ -90,14 +124,15 @@ const DashboardAdmin = () => {
               </thead>
               <tbody>
                 {users.map(u => (
-                  <tr key={u.id} style={{ borderBottom: "1px solid #f3f4f6" }}
+                  <tr key={u.id}
+                    style={{ borderBottom: "1px solid #f3f4f6" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#f9fafb"}
                     onMouseLeave={e => e.currentTarget.style.background = "transparent"}
                   >
                     <td style={{ padding: "10px 12px", color: "#374151" }}>{u.id}</td>
                     <td style={{ padding: "10px 12px", color: "#374151" }}>{u.name}</td>
                     <td style={{ padding: "10px 12px", color: "#6b7280" }}>{u.email}</td>
-                    <td style={{ padding: "10px 12px", color: "#374151", fontWeight: 600 }}>{u.emisi} kg</td>
+                    <td style={{ padding: "10px 12px", color: "#14532d", fontWeight: 700 }}>{u.emisi} kg</td>
                   </tr>
                 ))}
               </tbody>
@@ -105,7 +140,7 @@ const DashboardAdmin = () => {
           )}
         </div>
 
-        {/* Kanan: Chart + Kesimpulan + Tips */}
+        {/* Kanan */}
         <div style={{ flex: "1 1 300px", display: "flex", flexDirection: "column", gap: "16px" }}>
 
           {/* Chart */}
@@ -116,7 +151,7 @@ const DashboardAdmin = () => {
             <div style={{ fontSize: "15px", fontWeight: 700, marginBottom: "4px" }}>Total Emisi Karbon Bulanan</div>
             <div style={{ fontSize: "11px", color: "#9ca3af", marginBottom: "16px" }}>Jumlah Emisi CO₂</div>
             <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={stats.chart_data}>
+              <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="bulan" tick={{ fontSize: 10, fill: "#9ca3af" }} />
                 <YAxis tick={{ fontSize: 10, fill: "#9ca3af" }} />
@@ -132,7 +167,7 @@ const DashboardAdmin = () => {
             <div style={{ flex: 1, background: "#fff", borderRadius: "16px", padding: "16px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
               <div style={{ background: "#14532d", color: "#fff", borderRadius: "8px", padding: "4px 12px", fontSize: "13px", fontWeight: 700, display: "inline-block", marginBottom: "10px" }}>Kesimpulan</div>
               <p style={{ fontSize: "12px", color: "#6b7280", lineHeight: 1.6, margin: 0 }}>
-                Total emisi karbon seluruh pengguna mencapai <strong>{stats.total_emisi} kg CO₂</strong> dengan {stats.total_user} pengguna terdaftar.
+                Total emisi karbon seluruh pengguna mencapai <strong>{stats.total_emisi ?? 0} kg CO₂</strong> dengan <strong>{stats.total_users ?? 0}</strong> pengguna terdaftar.
               </p>
             </div>
 

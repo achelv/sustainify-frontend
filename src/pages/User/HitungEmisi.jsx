@@ -30,61 +30,39 @@ const FAKTOR_EMISI_LISTRIK = 0.87; // kg CO₂/kWh — DJLPE Kementerian ESDM (J
 /**
  * Faktor emisi bahan bakar (kg CO₂/liter)
  * Sumber: IPCC 2006 Vol.2 Ch.3 Table 3.2.1 — Default Emission Factors for Mobile Combustion
- * Digunakan di:
- *   - Sudarti et al. (2022), JSAL Universitas Brawijaya
- *   - Hendratmoko & Dewantoro (2018), Jurnal PKTJ Kemenhub
- *   - Analisis Emisi CO₂ Kendaraan Bermotor DIY, UGM (2024) — IPCC 2006 Tier 1
- *   - Jurnal Enviro UNS — Mobile Combustion IPCC 2006
  */
 const FAKTOR_EMISI_BBM = {
-  bensin:   2.404, // kg CO₂/liter — Gasoline (Premium, Pertalite, Pertamax)
-  solar:    2.701, // kg CO₂/liter — Diesel/Solar
-  pertamax: 2.404, // kg CO₂/liter — sama dengan bensin
+  bensin:   2.404,
+  solar:    2.701,
+  pertamax: 2.404,
 };
 
 /**
  * Konsumsi BBM rata-rata per jenis kendaraan (liter/km)
- * Sumber:
- *   - Motor  : 0.040 L/km (~25 km/L) — Sudarti et al. (2022) JSAL UB
- *   - Mobil  : 0.083 L/km (~12 km/L) — Analisis Emisi CO₂ DIY, UGM (2024)
- *   - Bus    : 0.200 L/km (~5 km/L)  — Jurnal Enviro UNS & PKTJ Kemenhub (2018)
- *
- * CATATAN: Hanya motor, mobil, bus yang digunakan di aplikasi ini.
- * Kendaraan lain (pesawat, kereta) memerlukan metode perhitungan berbeda
- * dan referensi terpisah, sehingga tidak disertakan.
  */
 const KONSUMSI_BBM_DEFAULT = {
-  motor: 0.040, // liter/km — sepeda motor bensin
-  mobil: 0.083, // liter/km — mobil penumpang bensin
-  bus:   0.200, // liter/km — bus solar
+  motor: 0.040,
+  mobil: 0.083,
+  bus:   0.200,
 };
 
 const DAYA_PERANGKAT = {
-  ac:         900,  // W — AC 1 PK
-  lampu:       18,  // W — LED 18W
-  tv:         100,  // W — LED 32"
-  kulkas:      80,  // W — 1 pintu
-  ricecooker: 400,  // W — 1–1.8L
-  kipas:       55,  // W — kipas berdiri
+  ac:         900,
+  lampu:       18,
+  tv:         100,
+  kulkas:      80,
+  ricecooker: 400,
+  kipas:       55,
 };
 
 // ── Fungsi hitung emisi ──────────────────────────────────────
 
-/**
- * RUMAH TANGGA — IPCC 2006 Tier 1
- * Emisi (kg CO₂) = (Daya (W) × Durasi (jam) ÷ 1000) × 0,87
- */
 const hitungEmisiRumahTangga = (jenisAktivitas, durasiJam) => {
   const daya      = DAYA_PERANGKAT[jenisAktivitas?.toLowerCase()] ?? 100;
   const energiKWh = (daya * durasiJam) / 1000;
   return parseFloat((energiKWh * FAKTOR_EMISI_LISTRIK).toFixed(4));
 };
 
-/**
- * TRANSPORTASI — IPCC 2006 Tier 1, Mobile Combustion (Vol.2 Ch.3)
- * Langkah 1: Konsumsi BBM (liter) = Jarak (km) × Konsumsi per km (liter/km)
- * Langkah 2: Emisi CO₂ (kg)       = Konsumsi BBM (liter) × Faktor Emisi BBM (kg CO₂/liter)
- */
 const hitungEmisiTransportasi = (jarakKm, konsumsiPerKm, jenisBBM = "bensin") => {
   const fe          = FAKTOR_EMISI_BBM[jenisBBM] ?? FAKTOR_EMISI_BBM.bensin;
   const konsumsiLtr = jarakKm * konsumsiPerKm;
@@ -155,7 +133,6 @@ const ModalHeader = ({ icon, title, sub, onClose }) => (
 const ModalDetail = ({ isTransportasi, row, onClose }) => {
   const namaAktivitas = isTransportasi ? row.aktivitas : row.namaAktivitas;
 
-  // ── Rumus TRANSPORTASI: 3 langkah IPCC 2006 Vol.2 Ch.3 ──
   const getRumusTransportasi = () => {
     const konsumsi = row.konsumsiPerKm ?? KONSUMSI_BBM_DEFAULT[row.jenisKendaraan ?? "motor"];
     const jenisBBM = row.jenisBBM ?? "bensin";
@@ -180,7 +157,6 @@ const ModalDetail = ({ isTransportasi, row, onClose }) => {
     };
   };
 
-  // ── Rumus RUMAH TANGGA: 2 langkah IPCC 2006 Tier 1 ──
   const getRumusRumahTangga = () => {
     const jenisKey = row.jenisKey?.toLowerCase() ?? "";
     const daya     = DAYA_PERANGKAT[jenisKey] ?? 100;
@@ -214,8 +190,6 @@ const ModalDetail = ({ isTransportasi, row, onClose }) => {
         sub={row.id}
         onClose={onClose}
       />
-
-      {/* Info baris */}
       <div style={styles.dlBox}>
         {[["Tanggal", row.tanggal], ["Waktu", row.waktu], ...info].map(([label, val], i, arr) => (
           <div key={i} style={{ ...styles.dlRow, borderBottom: i < arr.length - 1 ? "1px solid #f3f4f6" : "none" }}>
@@ -228,8 +202,6 @@ const ModalDetail = ({ isTransportasi, row, onClose }) => {
           </div>
         ))}
       </div>
-
-      {/* Langkah perhitungan IPCC */}
       <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: "10px", padding: "10px 14px", marginBottom: "14px" }}>
         <p style={{ fontSize: "11px", fontWeight: 700, color: "#92400e", marginBottom: "8px" }}>
           📐 Langkah Perhitungan (IPCC 2006 Tier 1)
@@ -244,7 +216,6 @@ const ModalDetail = ({ isTransportasi, row, onClose }) => {
           }}>{s}</p>
         ))}
       </div>
-
       <button style={styles.btnPrimary} onClick={onClose}>Tutup</button>
     </Overlay>
   );
@@ -254,19 +225,28 @@ const ModalDetail = ({ isTransportasi, row, onClose }) => {
 const ModalEdit = ({ isTransportasi, row, transportasiOptions, rumahTanggaOptions, onSave, onClose }) => {
   const [selKey, setSelKey] = useState(isTransportasi ? row.kendaraanId : row.aktivitasId);
   const [nilai,  setNilai]  = useState(row.nilai);
+  const [error,  setError]  = useState("");
 
   const handleSave = () => {
     const n = parseFloat(nilai);
-    if (!selKey || isNaN(n) || n <= 0) return;
+    if (!selKey || isNaN(n) || n <= 0) {
+      setError("Isi semua field dengan benar.");
+      return;
+    }
+    if (!isTransportasi && n > 24) {
+      setError("Durasi maksimal 24 jam.");
+      return;
+    }
+    setError("");
     if (isTransportasi) {
-      const opt        = transportasiOptions.find(o => String(o.value) === String(selKey));
+      const opt = transportasiOptions.find(o => String(o.value) === String(selKey));
       if (!opt) return;
-      const konsumsi   = opt.konsumsiPerKm ?? KONSUMSI_BBM_DEFAULT[opt.jenisKendaraan ?? "motor"];
-      const jenisBBM   = opt.jenisBBM ?? "bensin";
-      const emisi      = hitungEmisiTransportasi(n, konsumsi, jenisBBM);
+      const konsumsi = opt.konsumsiPerKm ?? KONSUMSI_BBM_DEFAULT[opt.jenisKendaraan ?? "motor"];
+      const jenisBBM = opt.jenisBBM ?? "bensin";
+      const emisi    = hitungEmisiTransportasi(n, konsumsi, jenisBBM);
       onSave({ kendaraanId: opt.value, aktivitas: opt.label, konsumsiPerKm: konsumsi, jenisBBM, emissionFactor: FAKTOR_EMISI_BBM[jenisBBM], nilai: n, emisi });
     } else {
-      const opt  = rumahTanggaOptions.find(o => String(o.value) === String(selKey));
+      const opt = rumahTanggaOptions.find(o => String(o.value) === String(selKey));
       if (!opt) return;
       const emisi = hitungEmisiRumahTangga(opt.jenisKey, n);
       onSave({ aktivitasId: opt.value, namaAktivitas: opt.label, jenisKey: opt.jenisKey, emissionFactor: FAKTOR_EMISI_LISTRIK, nilai: n, emisi });
@@ -286,9 +266,13 @@ const ModalEdit = ({ isTransportasi, row, transportasiOptions, rumahTanggaOption
           </select>
         </div>
         <div>
-          <label style={styles.label}>{isTransportasi ? "Jarak (km)" : "Durasi (jam)"}</label>
-          <input type="number" min="0" value={nilai} onChange={e => setNilai(e.target.value)} style={styles.input} />
+          <label style={styles.label}>{isTransportasi ? "Jarak (km)" : "Durasi (jam, maks. 24)"}</label>
+          <input
+            type="number" min="0" max={isTransportasi ? undefined : 24}
+            value={nilai} onChange={e => setNilai(e.target.value)} style={styles.input}
+          />
         </div>
+        {error && <p style={{ fontSize: "12px", color: "#dc2626", margin: 0 }}>{error}</p>}
       </div>
       <div style={{ display: "flex", gap: "8px" }}>
         <button style={styles.btnSecondary} onClick={onClose}>Batal</button>
@@ -376,6 +360,7 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
   const [loadingR,  setLoadingR]  = useState(false);
   const [selKey,    setSelKey]    = useState("");
   const [input,     setInput]     = useState("");
+  const [inputError, setInputError] = useState("");
   const [modal,     setModal]     = useState(null);
   const [popup,     setPopup]     = useState(null);
   const popupTimer = useRef(null);
@@ -513,7 +498,6 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
         konsumsiPerKm:  konsumsi,
         jenisBBM,
         emissionFactor: FAKTOR_EMISI_BBM[jenisBBM],
-        // Rumus IPCC: jarak × konsumsi per km × faktor emisi BBM
         emisi:          hitungEmisiTransportasi(n, konsumsi, jenisBBM),
       };
     } else {
@@ -523,7 +507,6 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
         aktivitasId:    keyOrId,
         jenisKey,
         emissionFactor: FAKTOR_EMISI_LISTRIK,
-        // Rumus IPCC: (daya × durasi ÷ 1000) × 0,87
         emisi:          hitungEmisiRumahTangga(jenisKey, n),
       };
     }
@@ -545,12 +528,20 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     return `(${daya}W × ${n}h ÷ 1000) = ${kwh}kWh  ×  ${FAKTOR_EMISI_LISTRIK} = ${emisi} kg CO₂`;
   };
 
+  // ── Validasi input form ──
+  const validateInput = (n) => {
+    if (!selKey) return `Pilih ${isTransportasi ? "kendaraan" : "aktivitas"} terlebih dahulu!`;
+    if (!input || isNaN(n) || n <= 0) return `Isi ${isTransportasi ? "jarak (km)" : "durasi (jam)"} dengan benar!`;
+    if (!isTransportasi && n > 24) return "Durasi maksimal 24 jam!";
+    return "";
+  };
+
   const handleTambah = async () => {
-    if (!selKey || !input || parseFloat(input) <= 0) {
-      alert(`Pilih ${isTransportasi ? "kendaraan" : "aktivitas"} dan isi ${isTransportasi ? "jarak" : "jumlah jam"}!`);
-      return;
-    }
-    const n = parseFloat(input);
+    const n   = parseFloat(input);
+    const err = validateInput(n);
+    if (err) { setInputError(err); return; }
+    setInputError("");
+
     if (isTransportasi) {
       const opt = transportasiOptions.find(o => String(o.value) === String(selKey));
       if (!opt) return;
@@ -558,11 +549,16 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
       setTData(prev => reindex([tempRow, ...prev], "ACT"));
       setSelKey(""); setInput("");
       try {
-        await api.post("/aktivitas", { kendaraan_id: opt.value, jarak_km: n, emisi_karbon: tempRow.emisi });
+        await api.post("/aktivitas", {
+          kendaraan_id:  parseInt(opt.value),
+          jarak_km:      n,
+          emisi_karbon:  tempRow.emisi,
+        });
         setTData(await fetchAktivitasAPI(transportasiOptions));
         showPopup(opt.label, n, "km", tempRow.emisi.toFixed(4), buatKeteranganRumus(true, opt, n));
       } catch (err) {
         console.error("Gagal tambah aktivitas:", err);
+        console.error("Response:", err.response?.data);
         setTData(prev => reindex(prev.filter(r => r.apiId !== null), "ACT"));
       }
     } else {
@@ -572,11 +568,18 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
       setRData(prev => reindex([tempRow, ...prev], "RT"));
       setSelKey(""); setInput("");
       try {
-        await api.post("/rumah-tangga", { aktivitas_id: opt.value, durasi_jam: n, emisi_karbon: tempRow.emisi });
+        // FIX: hanya kirim field yang divalidasi backend
+        // emisi_karbon dihitung di backend dari faktor_emisi tabel rumah_tangga
+        // user_id & tanggal diisi otomatis di controller
+        await api.post("/rumah-tangga", {
+          aktivitas_id: parseInt(opt.value), // FIX: pastikan integer, bukan string
+          durasi_jam:   n,                   // FIX: max 24, sudah divalidasi di atas
+        });
         setRData(await fetchRumahTanggaAPI(rumahTanggaOptions));
         showPopup(opt.label, n, "jam", tempRow.emisi.toFixed(4), buatKeteranganRumus(false, opt, n));
       } catch (err) {
         console.error("Gagal tambah aktivitas rumah tangga:", err);
+        console.error("Response:", err.response?.data); // lihat pesan validasi Laravel
         setRData(prev => reindex(prev.filter(r => r.apiId !== null), "RT"));
       }
     }
@@ -586,7 +589,11 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     if (isTransportasi) {
       const row = tData[idx];
       try {
-        await api.put(`/aktivitas/${row.apiId}`, { kendaraan_id: patch.kendaraanId, jarak_km: patch.nilai, emisi_karbon: patch.emisi });
+        await api.put(`/aktivitas/${row.apiId}`, {
+          kendaraan_id: parseInt(patch.kendaraanId),
+          jarak_km:     patch.nilai,
+          emisi_karbon: patch.emisi,
+        });
         setTData(await fetchAktivitasAPI(transportasiOptions));
       } catch {
         setTData(reindex(tData.map((r, i) => i === idx ? { ...r, ...patch } : r), "ACT"));
@@ -594,7 +601,11 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
     } else {
       const row = rData[idx];
       try {
-        await api.put(`/rumah-tangga/${row.apiId}`, { aktivitas_id: patch.aktivitasId, durasi_jam: patch.nilai, emisi_karbon: patch.emisi });
+        // FIX: sama seperti store — kirim aktivitas_id sebagai integer
+        await api.put(`/rumah-tangga/${row.apiId}`, {
+          aktivitas_id: parseInt(patch.aktivitasId),
+          durasi_jam:   patch.nilai,
+        });
         setRData(await fetchRumahTanggaAPI(rumahTanggaOptions));
       } catch {
         setRData(reindex(rData.map((r, i) => i === idx ? { ...r, ...patch } : r), "RT"));
@@ -667,18 +678,31 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
                 : `Emisi = (Daya (W) × Durasi (jam) ÷ 1000) × ${FAKTOR_EMISI_LISTRIK} kg CO₂/kWh`}
             </p>
           </div>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-            <select value={selKey} onChange={e => setSelKey(e.target.value)}
-              style={{ flex: "1 1 150px", padding: "9px 11px", borderRadius: "8px", border: "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: selKey ? "#fff" : "rgba(255,255,255,0.7)", fontSize: "13px", fontFamily: "inherit" }}>
-              <option value="" style={{ color: "#166534" }}>{isTransportasi ? "Pilih kendaraan" : "Pilih aktivitas"}</option>
-              {formOptions.map(o => <option key={o.value} value={o.value} style={{ color: "#166534" }}>{o.label}</option>)}
-            </select>
-            <input type="number" min="0" placeholder={isTransportasi ? "Jarak (km)" : "Durasi (jam)"} value={input} onChange={e => setInput(e.target.value)}
-              style={{ flex: "1 1 110px", padding: "9px 11px", borderRadius: "8px", border: "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: "13px", fontFamily: "inherit" }} />
-            <button onClick={handleTambah}
-              style={{ padding: "9px 18px", borderRadius: "8px", background: "#fff", border: "none", color: "#166534", fontSize: "13px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>
-              + Tambah
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+              <select value={selKey} onChange={e => { setSelKey(e.target.value); setInputError(""); }}
+                style={{ flex: "1 1 150px", padding: "9px 11px", borderRadius: "8px", border: inputError && !selKey ? "1.5px solid #fca5a5" : "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: selKey ? "#fff" : "rgba(255,255,255,0.7)", fontSize: "13px", fontFamily: "inherit" }}>
+                <option value="" style={{ color: "#166534" }}>{isTransportasi ? "Pilih kendaraan" : "Pilih aktivitas"}</option>
+                {formOptions.map(o => <option key={o.value} value={o.value} style={{ color: "#166534" }}>{o.label}</option>)}
+              </select>
+              <input
+                type="number" min="0" max={isTransportasi ? undefined : 24}
+                placeholder={isTransportasi ? "Jarak (km)" : "Durasi (jam, maks. 24)"}
+                value={input}
+                onChange={e => { setInput(e.target.value); setInputError(""); }}
+                style={{ flex: "1 1 110px", padding: "9px 11px", borderRadius: "8px", border: inputError && input && parseFloat(input) > 0 ? "1.5px solid #fca5a5" : "1.5px solid rgba(255,255,255,0.3)", background: "rgba(255,255,255,0.12)", color: "#fff", fontSize: "13px", fontFamily: "inherit" }}
+              />
+              <button onClick={handleTambah}
+                style={{ padding: "9px 18px", borderRadius: "8px", background: "#fff", border: "none", color: "#166534", fontSize: "13px", fontWeight: 700, fontFamily: "inherit", cursor: "pointer", whiteSpace: "nowrap" }}>
+                + Tambah
+              </button>
+            </div>
+            {/* Pesan error validasi */}
+            {inputError && (
+              <p style={{ fontSize: "11px", color: "#fca5a5", margin: 0, paddingLeft: "2px" }}>
+                ⚠ {inputError}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -726,7 +750,6 @@ const HitungEmisi = ({ subPage = "transportasi" }) => {
                       <span style={{ fontSize: "14px", fontWeight: 700, color: "#166534" }}>{row.emisi.toFixed(4)}</span>
                       <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "2px" }}>kg CO₂</span>
                     </div>
-                    {/* Rumus mini — sesuai IPCC */}
                     <div style={{ fontSize: "9px", color: "#d1d5db", marginTop: "1px" }}>
                       {isTransportasi
                         ? `${row.nilai}km × ${row.konsumsiPerKm}L/km × ${row.emissionFactor}`
